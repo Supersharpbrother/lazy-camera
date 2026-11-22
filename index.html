@@ -1,0 +1,1891 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0B0907" id="themeColorMeta">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" id="statusBarMeta">
+  <meta name="apple-mobile-web-app-title" content="Lazy Camera">
+  <meta name="description" content="Справочник по кинокамерам и калькулятор глубины резкости">
+  <title>Lazy Camera</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=12">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=12">
+  <link rel="preload" href="fonts/IBMPlexMono-Regular.woff" as="font" type="font/woff" crossorigin>
+  <link rel="preload" href="fonts/IBMPlexMono-SemiBold.woff" as="font" type="font/woff" crossorigin>
+  <style>
+
+    @font-face {
+      font-family: "IBM Plex Mono";
+      src: url("fonts/IBMPlexMono-Regular.woff") format("woff");
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "IBM Plex Mono";
+      src: url("fonts/IBMPlexMono-SemiBold.woff") format("woff");
+      font-weight: 600;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    :root {
+      color-scheme: dark;
+      /* Warm near-black */
+      --bg: #0B0907;
+      --bezel: #0B0907;
+      --screen: #100C09;
+      --panel: #15110D;
+      --input: #0E0C0A;
+      /* BMW cluster amber #FF8A1F, dimmed as if at half-to-low intensity */
+      --fg: #CE701A;
+      --fg-dim: #8A4A12;
+      --fg-bright: #E77D1D;
+      --amber-full: #FF8A1F;
+      --line: rgba(206, 112, 26, 0.38);
+      --fill: rgba(255, 138, 31, 0.10);
+      --fill-press: rgba(255, 138, 31, 0.20);
+      --glow: rgba(255, 138, 31, 0.22);
+      --radius: 9px;
+      --radius-sm: 8px;
+      --zone: rgba(255, 138, 31, 0.35);
+      --scanline-opacity: 0.35;
+      --safe-t: env(safe-area-inset-top, 0px);
+      --safe-b: env(safe-area-inset-bottom, 0px);
+      --safe-l: env(safe-area-inset-left, 0px);
+      --safe-r: env(safe-area-inset-right, 0px);
+    }
+
+    [data-theme="light"] {
+      color-scheme: light;
+      --bg: #D9D9D6;
+      --bezel: #D9D9D6;
+      --screen: #E2E2DF;
+      --panel: #ECECE8;
+      --input: #CFCFCB;
+      --fg: #2A2A2A;
+      --fg-dim: #5E5E5E;
+      --fg-bright: #1E1E1E;
+      --amber-full: #1E1E1E;
+      --line: rgba(30, 30, 30, 0.22);
+      --fill: rgba(30, 30, 30, 0.07);
+      --fill-press: rgba(30, 30, 30, 0.14);
+      --glow: transparent;
+      --zone: rgba(30, 30, 30, 0.28);
+      --scanline-opacity: 0;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-feature-settings: "zero" 1;
+      font-variant-numeric: slashed-zero tabular-nums;
+      font-weight: 400;
+      min-height: 100%;
+      min-height: 100dvh;
+    }
+
+    body {
+      padding: calc(var(--safe-t) + 8px) calc(var(--safe-r) + 12px) calc(var(--safe-b) + 12px) calc(var(--safe-l) + 12px);
+    }
+
+    .scanlines {
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      opacity: var(--scanline-opacity);
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0.10) 0px,
+        rgba(0, 0, 0, 0.10) 1px,
+        transparent 1px,
+        transparent 5px
+      );
+    }
+
+    .bezel {
+      max-width: 446px;
+      margin: 0 auto;
+      padding: 0;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+    }
+
+    .crt {
+      background: var(--screen);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: none;
+    }
+
+    .app {
+      max-width: 430px;
+      margin: 0 auto;
+      padding: 12px 14px 14px;
+    }
+
+    .term-status {
+      font-size: 0.64rem;
+      letter-spacing: 0.08em;
+      color: var(--fg-dim);
+      text-transform: uppercase;
+      margin: 0 0 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--line);
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .brand { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .brand h1 {
+      margin: 0;
+      font-size: 1.02rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      line-height: 1.25;
+      text-transform: uppercase;
+      color: var(--fg-bright);
+      text-shadow: 0 0 10px var(--glow);
+    }
+    .brand p {
+      margin: 0;
+      font-size: 0.68rem;
+      color: var(--fg-dim);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .cursor {
+      display: inline-block;
+      width: 0.45ch;
+      height: 0.95em;
+      margin-left: 5px;
+      background: var(--fg);
+      opacity: 0.7;
+      vertical-align: -0.1em;
+      border-radius: 1px;
+      animation: blink 1.4s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .icon-btn {
+      flex: 0 0 auto;
+      width: 40px;
+      height: 40px;
+      border: 1px solid var(--line);
+      background: var(--fill);
+      color: var(--fg);
+      border-radius: var(--radius-sm);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      padding: 0;
+      box-shadow: none;
+    }
+    .icon-btn:active,
+    .icon-btn:focus-visible {
+      outline: none;
+      background: var(--fill-press);
+      border-color: var(--fg);
+    }
+    .icon-btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .icon-btn svg[hidden] { display: none !important; }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: none;
+    }
+    .results { padding: 14px 14px 12px; margin-bottom: 12px; }
+    .controls { padding: 4px 14px 14px; }
+
+    .limits {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 8px;
+      align-items: end;
+      text-align: center;
+    }
+    .limits .focus-col { padding: 0 4px; }
+
+    .lbl, .field-head label, .sub-label {
+      display: block;
+      font-size: 0.66rem;
+      color: var(--fg-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 4px;
+    }
+
+    .val {
+      font-variant-numeric: slashed-zero tabular-nums;
+      font-feature-settings: "zero" 1;
+      letter-spacing: 0.02em;
+      font-weight: 600;
+      line-height: 1.1;
+      color: var(--fg-bright);
+      text-shadow: 0 0 8px var(--glow);
+    }
+    .val.lg { font-size: 1.32rem; }
+    .val.md { font-size: 1.12rem; color: var(--fg-bright); }
+    .val.inf { letter-spacing: 0; }
+
+    .visual { margin: 12px 0 8px; }
+    .track-wrap { position: relative; height: 42px; }
+    .track {
+      position: absolute;
+      left: 0; right: 0; top: 18px;
+      height: 6px;
+      border-radius: 99px;
+      background: var(--input);
+      border: 1px solid var(--line);
+      overflow: hidden;
+      box-shadow: none;
+    }
+    .zone {
+      position: absolute;
+      top: 0;
+      height: 100%;
+      background: var(--zone);
+      border-radius: 99px;
+      box-shadow: none;
+    }
+    .mark { position: absolute; top: 10px; width: 0; height: 0; transform: translateX(-50%); }
+    .mark::before {
+      content: "";
+      display: block;
+      width: 10px; height: 22px;
+      margin-left: -5px;
+      border-radius: 99px;
+      background: var(--fg-bright);
+      box-shadow: none;
+    }
+    .zone-lbl {
+      position: absolute;
+      top: 1px;
+      font-size: 0.58rem;
+      font-weight: 600;
+      color: var(--fg-bright);
+      font-variant-numeric: slashed-zero tabular-nums;
+      font-feature-settings: "zero" 1;
+      letter-spacing: 0.01em;
+      line-height: 1;
+      white-space: nowrap;
+      pointer-events: none;
+      text-shadow: 0 0 6px var(--glow);
+    }
+    .zone-lbl[hidden] { display: none !important; }
+    .zone-lbl.edge-mid { transform: translateX(-50%); }
+    .zone-lbl.edge-left { transform: translateX(0); }
+    .zone-lbl.edge-right { transform: translateX(-100%); }
+    .zone-lbl.below {
+      top: auto;
+      bottom: 0;
+    }
+    .metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 12px;
+      padding-top: 8px;
+      border-top: 1px solid var(--line);
+    }
+    .metric { min-width: 0; }
+    .metric .val { font-size: 0.95rem; }
+    .metric.wide { grid-column: 1 / -1; }
+
+    .field { padding: 9px 0 7px; border-top: 1px solid var(--line); }
+    .field:first-child { border-top: 0; }
+
+    .field-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+    .sub-label { margin: 8px 0 4px; }
+
+    .num {
+      width: 7.4rem;
+      height: 36px;
+      border: 1px solid var(--line);
+      background: var(--input);
+      color: var(--fg-bright);
+      -webkit-text-fill-color: var(--fg-bright);
+      caret-color: var(--fg-bright);
+      accent-color: var(--fg);
+      border-radius: var(--radius-sm);
+      text-align: right;
+      padding: 0 10px;
+      font-size: 16px;
+      font-family: inherit;
+      font-weight: 600;
+      font-variant-numeric: slashed-zero tabular-nums;
+      font-feature-settings: "zero" 1;
+      box-shadow: none;
+      -moz-appearance: textfield;
+    }
+    .num::-webkit-outer-spin-button,
+    .num::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      appearance: none;
+      margin: 0;
+    }
+    .num::placeholder,
+    .num::-webkit-input-placeholder {
+      color: var(--fg-bright);
+      -webkit-text-fill-color: var(--fg-bright);
+      opacity: 1;
+    }
+    .num:focus {
+      outline: none;
+      border-color: var(--fg);
+      background: var(--fill);
+    }
+    .num:-webkit-autofill,
+    .num:-webkit-autofill:hover,
+    .num:-webkit-autofill:focus {
+      -webkit-text-fill-color: var(--fg-bright);
+      caret-color: var(--fg-bright);
+      box-shadow: 0 0 0 40px var(--input) inset;
+      transition: background-color 9999s ease-out;
+    }
+    .unit {
+      margin-left: 4px;
+      color: var(--fg);
+      -webkit-text-fill-color: var(--fg);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+    }
+    .row-input { display: flex; align-items: center; }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 28px;
+      background: transparent;
+      margin: 0;
+      accent-color: var(--fg);
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 6px;
+      background: var(--input);
+      border-radius: 99px;
+      border: 1px solid var(--line);
+      box-shadow: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: var(--fg);
+      border: 1px solid var(--fg-bright);
+      margin-top: -9px;
+      box-shadow: none;
+    }
+    input[type="range"]:active::-webkit-slider-thumb {
+      background: var(--fg-bright);
+    }
+    input[type="range"]::-moz-range-track {
+      height: 6px;
+      background: var(--input);
+      border-radius: 99px;
+      border: 1px solid var(--line);
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: var(--fg);
+      border: 1px solid var(--fg-bright);
+      box-shadow: none;
+    }
+
+    .select-wrap {
+      position: relative;
+      display: block;
+    }
+    .select-chevron {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      width: 11px;
+      height: 15px;
+      transform: translateY(-50%);
+      pointer-events: none;
+      color: var(--fg);
+      fill: currentColor;
+    }
+    .select-wrap:focus-within .select-chevron {
+      color: var(--fg-bright);
+    }
+    select {
+      width: 100%;
+      height: 40px;
+      border: 1px solid var(--line);
+      background-color: var(--fill);
+      color: var(--fg);
+      -webkit-text-fill-color: var(--fg);
+      caret-color: var(--fg-bright);
+      accent-color: var(--fg);
+      border-radius: var(--radius-sm);
+      padding: 0 32px 0 10px;
+      font-size: 16px;
+      font-family: inherit;
+      font-feature-settings: "zero" 1;
+      font-variant-numeric: slashed-zero;
+      box-shadow: none;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    select::-ms-expand { display: none; }
+    select:focus {
+      outline: none;
+      border-color: var(--fg);
+      background-color: var(--fill-press);
+      color: var(--fg-bright);
+      -webkit-text-fill-color: var(--fg-bright);
+    }
+    select option {
+      background-color: var(--panel);
+      color: var(--fg);
+    }
+
+    .format-meta {
+      margin-top: 8px;
+      font-size: 0.76rem;
+      font-variant-numeric: slashed-zero tabular-nums;
+      font-feature-settings: "zero" 1;
+      line-height: 1.35;
+      color: var(--fg-bright);
+    }
+    .custom-row {
+      display: none;
+      margin-top: 8px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .custom-row.on { display: flex; }
+    .custom-row label { text-transform: uppercase; font-size: 0.66rem; color: var(--fg-dim); letter-spacing: 0.08em; }
+
+    ::selection { background: var(--fg); color: var(--bg); }
+
+    .header-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+    .text-btn {
+      height: 40px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      background: var(--fill);
+      color: var(--fg);
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      box-shadow: none;
+      white-space: nowrap;
+    }
+    .text-btn:active {
+      background: var(--fill-press);
+      border-color: var(--fg);
+    }
+
+    body.mira-open { overflow: hidden; }
+    .mira-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      overflow: hidden;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    .mira-overlay[hidden] { display: none !important; }
+    .mira-stage {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    .mira-stage svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .mira-close {
+      position: absolute;
+      z-index: 201;
+      top: max(6px, var(--safe-t));
+      right: max(6px, var(--safe-r));
+      width: 36px;
+      height: 36px;
+      border: 1px solid rgba(0, 0, 0, 0.35);
+      background: rgba(255, 255, 255, 0.72);
+      color: #111;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: none;
+      display: grid;
+      place-items: center;
+      padding: 0;
+    }
+    .mira-close:active { background: rgba(255, 255, 255, 0.95); }
+
+    .credit {
+      margin: 10px 14px 0;
+      font-size: 0.64rem;
+      letter-spacing: 0.03em;
+      color: var(--fg-dim);
+      text-align: left;
+      line-height: 1.4;
+    }
+    .credit a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .credit a:active { color: var(--fg); }
+
+    .icon-btn svg.pictogram {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+      fill: currentColor;
+      stroke-width: 0;
+    }
+    .icon-btn svg.pictogram .ring {
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.5;
+    }
+    .text-btn.wide {
+      padding: 0 8px;
+      letter-spacing: 0.05em;
+      font-size: 0.62rem;
+    }
+
+
+    .ap-readout {
+      min-width: 4.6rem;
+      text-align: right;
+      font-size: 16px;
+      font-weight: 600;
+      font-variant-numeric: slashed-zero tabular-nums;
+      font-feature-settings: "zero" 1;
+      color: var(--fg-bright);
+      letter-spacing: 0.02em;
+      text-shadow: 0 0 8px var(--glow);
+    }
+    .ap-scale {
+      position: relative;
+      height: 54px;
+      margin: 2px -4px 0;
+      overflow: hidden;
+      touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
+      cursor: ew-resize;
+      -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 14%, #000 86%, transparent 100%);
+      mask-image: linear-gradient(to right, transparent 0%, #000 14%, #000 86%, transparent 100%);
+    }
+    .ap-caret {
+      position: absolute;
+      left: 50%;
+      top: 2px;
+      z-index: 3;
+      width: 0;
+      height: 0;
+      margin-left: -5px;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 7px solid var(--fg-bright);
+      pointer-events: none;
+    }
+    .ap-caret-line {
+      position: absolute;
+      left: 50%;
+      top: 10px;
+      z-index: 2;
+      width: 1px;
+      height: 20px;
+      margin-left: -0.5px;
+      background: var(--fg-bright);
+      opacity: 0.55;
+      pointer-events: none;
+    }
+    .ap-scroller {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      will-change: transform;
+    }
+    .ap-tick {
+      position: absolute;
+      top: 14px;
+      width: 28px;
+      margin-left: -14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      appearance: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+    }
+    .ap-tick-mark {
+      display: block;
+      background: var(--fg-dim);
+      border-radius: 1px;
+    }
+    .ap-tick.third .ap-tick-mark {
+      width: 1px;
+      height: 8px;
+      opacity: 0.75;
+    }
+    .ap-tick.full .ap-tick-mark {
+      width: 1.5px;
+      height: 16px;
+      background: var(--fg);
+      opacity: 1;
+    }
+    .ap-tick.is-on .ap-tick-mark {
+      background: var(--fg-bright);
+      opacity: 1;
+    }
+    .ap-tick.third.is-on .ap-tick-mark {
+      width: 1.5px;
+      height: 11px;
+    }
+    .ap-tick-lab {
+      margin-top: 4px;
+      font-size: 0.58rem;
+      font-weight: 600;
+      color: var(--fg-dim);
+      font-variant-numeric: slashed-zero tabular-nums;
+      font-feature-settings: "zero" 1;
+      letter-spacing: 0.02em;
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .ap-tick.is-on .ap-tick-lab {
+      color: var(--fg-bright);
+    }
+    .ap-hidden-ctrl {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      clip-path: inset(50%);
+      white-space: nowrap;
+      border: 0;
+      padding: 0;
+      margin: -1px;
+    }
+
+    /* ── Lazy Camera: вкладки и справочник ── */
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      margin: 0 0 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .tab {
+      height: 38px;
+      border: 0;
+      background: transparent;
+      color: var(--fg-dim);
+      font-family: inherit;
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      padding: 0 6px;
+    }
+    .tab + .tab { border-left: 1px solid var(--line); }
+    .tab[aria-selected="true"] {
+      background: var(--fill-press);
+      color: var(--fg-bright);
+      text-shadow: 0 0 8px var(--glow);
+    }
+    .tab-panel[hidden] { display: none !important; }
+    .cam-controls { margin-bottom: 10px; }
+    .seg {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+    .seg-btn {
+      height: 36px;
+      border: 0;
+      background: var(--input);
+      color: var(--fg-dim);
+      font-family: inherit;
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+    }
+    .seg-btn + .seg-btn { border-left: 1px solid var(--line); }
+    .seg-btn[aria-checked="true"] { background: var(--fill-press); color: var(--fg-bright); }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .chip {
+      min-width: 40px;
+      height: 30px;
+      padding: 0 9px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--fg-dim);
+      font-family: inherit;
+      font-size: 0.74rem;
+      font-variant-numeric: slashed-zero tabular-nums;
+      cursor: pointer;
+    }
+    .chip[aria-pressed="true"] { background: var(--fill-press); color: var(--fg-bright); border-color: var(--fg); }
+    .cam-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 0 2px 10px;
+      font-size: 0.7rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--fg-dim);
+    }
+    .cam-summary .text-btn { height: 32px; }
+    .text-btn[aria-pressed="true"] { background: var(--fill-press); color: var(--fg-bright); border-color: var(--fg); }
+    .mode-card { padding: 11px 12px 9px; margin-bottom: 10px; }
+    .mode-card.miss { opacity: 0.55; }
+    .mode-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+    .mode-name { font-weight: 600; font-size: 0.95rem; color: var(--fg-bright); text-shadow: 0 0 8px var(--glow); }
+    .badges { display: flex; gap: 4px; flex: 0 0 auto; }
+    .badge {
+      font-size: 0.56rem;
+      letter-spacing: 0.08em;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 1px 4px;
+      color: var(--fg);
+    }
+    .mode-meta { margin-top: 4px; font-size: 0.72rem; color: var(--fg); line-height: 1.4; font-variant-numeric: slashed-zero tabular-nums; }
+    .mode-note { margin-top: 3px; font-size: 0.66rem; color: var(--fg-dim); line-height: 1.35; }
+    .mode-ana { margin-top: 5px; font-size: 0.72rem; color: var(--fg-bright); line-height: 1.4; }
+    .rec { margin-top: 8px; border-top: 1px solid var(--line); }
+    .rec-row {
+      display: grid;
+      grid-template-columns: 4.6rem 1fr auto;
+      gap: 8px;
+      align-items: baseline;
+      padding: 6px 0 5px;
+      border-bottom: 1px dashed var(--line);
+      font-size: 0.74rem;
+      line-height: 1.3;
+    }
+    .rec-row:last-child { border-bottom: 0; }
+    .rec-f { font-size: 0.6rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg-dim); }
+    .rec-r { color: var(--fg-bright); font-variant-numeric: slashed-zero tabular-nums; min-width: 0; }
+    .rec-r small, .rec-fps small { display: block; font-size: 0.62rem; color: var(--fg-dim); margin-top: 1px; }
+    .rec-fps { text-align: right; font-weight: 600; color: var(--fg-bright); white-space: nowrap; font-variant-numeric: slashed-zero tabular-nums; }
+    .rec-row.no .rec-r, .rec-row.no .rec-fps { color: var(--fg-dim); font-weight: 400; }
+    .rec-row.unk .rec-fps { color: var(--fg-dim); }
+    .rec-row.ok .rec-fps::before { content: "✓ "; font-weight: 400; }
+    .empty-note { padding: 14px; font-size: 0.8rem; color: var(--fg-dim); text-align: center; margin-bottom: 10px; }
+    .cam-notes { padding: 12px 14px; margin-top: 4px; }
+    .cam-notes ul { margin: 4px 0 12px; padding-left: 16px; font-size: 0.7rem; line-height: 1.45; color: var(--fg); }
+    .cam-notes li { margin-bottom: 4px; }
+    .cam-notes .sources a { color: var(--fg); word-break: break-word; }
+    .data-date { margin: 0; font-size: 0.62rem; color: var(--fg-dim); }
+  </style>
+</head>
+<body>
+  <div class="scanlines" aria-hidden="true"></div>
+  <div class="bezel">
+  <div class="crt">
+  <div class="app">
+    <header>
+      <div class="brand">
+        <h1>Lazy Camera<span class="cursor" aria-hidden="true"></span></h1>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="icon-btn" id="miraOpen" aria-label="Мира">
+          <svg class="pictogram" viewBox="0 0 24 24" aria-hidden="true">
+            <rect class="ring" x="2.2" y="2.2" width="19.6" height="19.6" rx="3"></rect>
+            <path d="M12,12 L12,4.7 L14.7936,5.2557 Z M12,12 L17.1619,6.8381 L18.7443,9.2064 Z M12,12 L19.3,12 L18.7443,14.7936 Z M12,12 L17.1619,17.1619 L14.7936,18.7443 Z M12,12 L12,19.3 L9.2064,18.7443 Z M12,12 L6.8381,17.1619 L5.2557,14.7936 Z M12,12 L4.7,12 L5.2557,9.2064 Z M12,12 L6.8381,6.8381 L9.2064,5.2557 Z"></path>
+            <circle cx="12" cy="12" r="0.7" fill="currentColor"></circle>
+          </svg>
+        </button>
+        <button type="button" class="icon-btn" id="themeToggle" aria-label="Включить светлую тему">
+          <svg id="iconMoon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M21 14.3A8.2 8.2 0 0 1 9.7 3 8.4 8.4 0 1 0 21 14.3z"></path>
+          </svg>
+          <svg id="iconSun" viewBox="0 0 24 24" aria-hidden="true" hidden>
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 3v1.6M12 19.4V21M4.9 4.9l1.1 1.1M18 18l1.1 1.1M3 12h1.6M19.4 12H21M4.9 19.1L6 18M18 6l1.1-1.1"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <nav class="tabs" role="tablist" aria-label="Разделы">
+      <button type="button" class="tab" role="tab" id="tabBtnCam" data-tab="cam" aria-selected="true">Камеры</button>
+      <button type="button" class="tab" role="tab" id="tabBtnDof" data-tab="dof" aria-selected="false">Глубина резкости</button>
+    </nav>
+
+    <div id="tabCam" class="tab-panel" role="tabpanel" aria-labelledby="tabBtnCam">
+      <section class="card controls cam-controls">
+        <div class="field">
+          <label class="sub-label" for="camSelect" style="margin-top:0">Камера</label>
+          <div class="select-wrap">
+            <select id="camSelect"></select>
+            <svg class="select-chevron" viewBox="0 0 12 16" aria-hidden="true" focusable="false">
+              <path d="M2 6 L6 2 L10 6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M2 10 L6 14 L10 10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="format-meta" id="camMeta">—</div>
+        </div>
+        <div class="field">
+          <span class="sub-label" style="margin-top:0">Оптика</span>
+          <div class="seg" id="opticsSeg" role="radiogroup" aria-label="Оптика">
+            <button type="button" class="seg-btn" data-optics="sph" role="radio">Сферическая</button>
+            <button type="button" class="seg-btn" data-optics="ana" role="radio">Анаморфот</button>
+          </div>
+          <div id="sqWrap" hidden>
+            <span class="sub-label">Коэффициент сжатия</span>
+            <div class="chips" id="sqChips"></div>
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-head">
+            <label for="fpsInput">Частота кадров</label>
+            <div class="row-input">
+              <input class="num" id="fpsInput" type="number" inputmode="decimal" min="1" max="1000" step="1" value="24">
+              <span class="unit">fps</span>
+            </div>
+          </div>
+          <div class="chips" id="fpsChips"></div>
+        </div>
+        <div class="field">
+          <span class="sub-label" style="margin-top:0">Кодек</span>
+          <div class="chips" id="famChips"></div>
+        </div>
+      </section>
+
+      <div class="cam-summary">
+        <span id="camSummary">—</span>
+        <button type="button" class="text-btn wide" id="showAllBtn" aria-pressed="false">Все режимы</button>
+      </div>
+      <div id="camModes"></div>
+
+      <section class="card cam-notes">
+        <span class="lbl">Примечания</span>
+        <ul id="camNotes"></ul>
+        <span class="lbl">Обозначения</span>
+        <ul class="legend">
+          <li><b>до N</b> — максимум fps по данным производителя; серым — не тянет нужную частоту.</li>
+          <li><b>н/д</b> — производитель не публикует значение.</li>
+          <li><b>*</b> у мм — посчитано из пикселей и шага пикселя производителя.</li>
+          <li><b>ANA</b> — производитель обозначает режим как анаморфотный; <b>DSQ</b> — де-сквиз в камере для выбранного коэффициента.</li>
+        </ul>
+        <span class="lbl">Источники</span>
+        <ul id="camSources" class="sources"></ul>
+        <p class="data-date" id="dataDate"></p>
+      </section>
+    </div>
+
+    <div id="tabDof" class="tab-panel" role="tabpanel" aria-labelledby="tabBtnDof" hidden>
+
+    <section class="card results" aria-live="polite">
+      <div class="limits">
+        <div>
+          <span class="lbl">Передняя</span>
+          <div class="val lg" id="outNear">—</div>
+        </div>
+        <div class="focus-col">
+          <span class="lbl">Фокус</span>
+          <div class="val md" id="outFocus">—</div>
+        </div>
+        <div>
+          <span class="lbl">Задняя</span>
+          <div class="val lg" id="outFar">—</div>
+        </div>
+      </div>
+
+      <div class="visual" aria-hidden="true">
+        <div class="track-wrap">
+          <div class="track"><div class="zone" id="zone"></div></div>
+          <div class="mark" id="focusMark"></div>
+          <div class="zone-lbl" id="zoneNearLbl" hidden></div>
+          <div class="zone-lbl" id="zoneFarLbl" hidden></div>
+        </div>
+      </div>
+
+      <div class="metrics">
+        <div class="metric">
+          <span class="lbl">Глубина резкости</span>
+          <div class="val" id="outTotal">—</div>
+        </div>
+        <div class="metric">
+          <span class="lbl">Гиперфокал</span>
+          <div class="val" id="outHyperfocal">—</div>
+        </div>
+        <div class="metric wide">
+          <span class="lbl">Впереди / позади</span>
+          <div class="val" id="outSplit">—</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card controls">
+      <div class="field">
+        <div class="field-head">
+          <label for="focal">Фокусное расстояние</label>
+          <div class="row-input">
+            <input class="num" id="focal" type="number" inputmode="decimal" min="1" max="2000" step="0.1" value="50">
+            <span class="unit">мм</span>
+          </div>
+        </div>
+        <input type="range" id="focalRange" min="8" max="400" step="1" value="50" aria-label="Фокусное расстояние">
+      </div>
+
+      <div class="field">
+        <div class="field-head">
+          <label id="apertureLabel">Диафрагма</label>
+          <div class="row-input" id="apertureValueWrap">
+            <span class="unit" style="margin-right:6px;margin-left:0">f/</span>
+            <span class="ap-readout" id="apertureReadout">2,8</span>
+          </div>
+        </div>
+        <div class="ap-scale" id="apertureScale" role="slider" tabindex="0" aria-labelledby="apertureLabel" aria-valuemin="1" aria-valuemax="32" aria-valuenow="2.8" aria-valuetext="2,8">
+          <div class="ap-caret" aria-hidden="true"></div>
+          <div class="ap-caret-line" aria-hidden="true"></div>
+          <div class="ap-scroller" id="apertureScroller"></div>
+        </div>
+        <select id="aperture" class="ap-hidden-ctrl" aria-hidden="true" tabindex="-1"></select>
+        <input type="range" id="apertureRange" class="ap-hidden-ctrl" tabindex="-1" min="0" max="30" step="1" value="9" aria-hidden="true">
+        <div class="custom-row" id="customApertureRow">
+          <label for="apertureCustom">Своё значение</label>
+          <div class="row-input">
+            <span class="unit" style="margin-right:6px;margin-left:0">f/</span>
+            <input class="num" id="apertureCustom" type="number" inputmode="decimal" min="0.5" max="128" step="0.1" value="2.8">
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-head">
+          <label for="distance">Дистанция фокусировки</label>
+          <div class="row-input">
+            <input class="num" id="distance" type="number" inputmode="decimal" min="0.01" max="10000" step="0.01" value="3">
+            <span class="unit">м</span>
+          </div>
+        </div>
+        <input type="range" id="distanceRange" min="0" max="1000" step="1" value="0" aria-label="Дистанция фокусировки">
+      </div>
+
+      <div class="field">
+        <label class="sub-label" for="camera" style="margin-top:0">Камера</label>
+        <div class="select-wrap">
+          <select id="camera"></select>
+          <svg class="select-chevron" viewBox="0 0 12 16" aria-hidden="true" focusable="false">
+            <path d="M2 6 L6 2 L10 6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M2 10 L6 14 L10 10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <label class="sub-label" for="mode">Режим</label>
+        <div class="select-wrap">
+          <select id="mode"></select>
+          <svg class="select-chevron" viewBox="0 0 12 16" aria-hidden="true" focusable="false">
+            <path d="M2 6 L6 2 L10 6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M2 10 L6 14 L10 10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="format-meta" id="formatMeta">—</div>
+        <div class="custom-row on" id="customCocRow">
+          <label for="coc">Свой CoC</label>
+          <div class="row-input">
+            <input class="num" id="coc" type="number" inputmode="decimal" min="0.001" max="1" step="0.001" placeholder="">
+            <span class="unit">мм</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    </div>
+
+    <p class="credit">
+      <a href="https://t.me/SuperSharpBrother" target="_blank" rel="noopener noreferrer">@SuperSharpBrother</a>
+    </p>
+  </div>
+  </div>
+  </div>
+
+  <div id="miraOverlay" class="mira-overlay" hidden role="dialog" aria-modal="true" aria-label="Мира">
+    <button type="button" class="mira-close" id="miraClose" aria-label="Закрыть">&times;</button>
+    <div class="mira-stage" id="miraStage">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" shape-rendering="geometricPrecision" aria-hidden="true">
+<rect width="1000" height="1000" fill="#fff"/>
+<path d="M500,500 L500,-300 L569.7246,-296.9558 L500,500 Z M500,500 L638.9185,-287.8462 L707.0552,-272.7407 L500,500 Z M500,500 L773.6161,-251.7541 L838.0946,-225.0462 L500,500 Z M500,500 L900,-192.8203 L958.8611,-155.3216 L500,500 Z M500,500 L1014.2301,-112.8356 L1065.6854,-65.6854 L500,500 Z M500,500 L1112.8356,-14.2301 L1155.3216,41.1389 L500,500 Z M500,500 L1192.8203,100 L1225.0462,161.9054 L500,500 Z M500,500 L1251.7541,226.3839 L1272.7407,292.9448 L500,500 Z M500,500 L1287.8462,361.0815 L1296.9558,430.2754 L500,500 Z M500,500 L1300,500 L1296.9558,569.7246 L500,500 Z M500,500 L1287.8462,638.9185 L1272.7407,707.0552 L500,500 Z M500,500 L1251.7541,773.6161 L1225.0462,838.0946 L500,500 Z M500,500 L1192.8203,900 L1155.3216,958.8611 L500,500 Z M500,500 L1112.8356,1014.2301 L1065.6854,1065.6854 L500,500 Z M500,500 L1014.2301,1112.8356 L958.8611,1155.3216 L500,500 Z M500,500 L900,1192.8203 L838.0946,1225.0462 L500,500 Z M500,500 L773.6161,1251.7541 L707.0552,1272.7407 L500,500 Z M500,500 L638.9185,1287.8462 L569.7246,1296.9558 L500,500 Z M500,500 L500,1300 L430.2754,1296.9558 L500,500 Z M500,500 L361.0815,1287.8462 L292.9448,1272.7407 L500,500 Z M500,500 L226.3839,1251.7541 L161.9054,1225.0462 L500,500 Z M500,500 L100,1192.8203 L41.1389,1155.3216 L500,500 Z M500,500 L-14.2301,1112.8356 L-65.6854,1065.6854 L500,500 Z M500,500 L-112.8356,1014.2301 L-155.3216,958.8611 L500,500 Z M500,500 L-192.8203,900 L-225.0462,838.0946 L500,500 Z M500,500 L-251.7541,773.6161 L-272.7407,707.0552 L500,500 Z M500,500 L-287.8462,638.9185 L-296.9558,569.7246 L500,500 Z M500,500 L-300,500 L-296.9558,430.2754 L500,500 Z M500,500 L-287.8462,361.0815 L-272.7407,292.9448 L500,500 Z M500,500 L-251.7541,226.3839 L-225.0462,161.9054 L500,500 Z M500,500 L-192.8203,100 L-155.3216,41.1389 L500,500 Z M500,500 L-112.8356,-14.2301 L-65.6854,-65.6854 L500,500 Z M500,500 L-14.2301,-112.8356 L41.1389,-155.3216 L500,500 Z M500,500 L100,-192.8203 L161.9054,-225.0462 L500,500 Z M500,500 L226.3839,-251.7541 L292.9448,-272.7407 L500,500 Z M500,500 L361.0815,-287.8462 L430.2754,-296.9558 L500,500 Z" fill="#000"/>
+<circle cx="500.0" cy="500.0" r="7" fill="#fff"/>
+<circle cx="500.0" cy="500.0" r="2.2" fill="#000"/>
+</svg>
+    </div>
+  </div>
+
+  <script>
+    const STOP_MARKS = {
+      0: "1", 3: "1,4", 6: "2", 9: "2,8", 12: "4",
+      15: "5,6", 18: "8", 21: "11", 24: "16", 27: "22", 30: "32"
+    };
+
+    function cineStopLabel(k) {
+      const rem = k % 3;
+      const mark = STOP_MARKS[k - rem];
+      if (rem === 0) return mark;
+      return mark + (rem === 1 ? "\u2153" : "\u2154");
+    }
+
+    const STOPS = [];
+    for (let k = 0; k <= 30; k++) {
+      STOPS.push({ k, N: Math.pow(2, k / 6), label: cineStopLabel(k) });
+    }
+
+    function stopIndexByValue(n) {
+      let best = 0, bestD = Infinity;
+      for (let i = 0; i < STOPS.length; i++) {
+        const d = Math.abs(STOPS[i].N - n);
+        if (d < bestD) { bestD = d; best = i; }
+      }
+      return best;
+    }
+
+    function stopIndexFromValue(raw) {
+      if (raw == null || raw === "") return -1;
+      const s = String(raw);
+      const tm = /^t(\d+)$/.exec(s);
+      if (tm) {
+        const k = Number(tm[1]);
+        return STOPS.findIndex((st) => st.k === k);
+      }
+      const n = parseNum(s);
+      if (Number.isFinite(n) && n > 0) return stopIndexByValue(n);
+      return -1;
+    }
+
+    function applyApertureIndex(idx) {
+      const i = clamp(idx, 0, STOPS.length - 1);
+      el.aperture.value = "t" + STOPS[i].k;
+      el.apertureRange.value = String(i);
+    }
+
+    const CAMERAS = [
+      {
+        id: "alexa-mini",
+        name: "ARRI Alexa Mini",
+        modes: [
+          { id: "og-34", name: "Open Gate 3,4K", w: 28.25, h: 18.17 },
+          { id: "43-28", name: "4:3 2,8K", w: 23.76, h: 17.82 },
+          { id: "32-uhd", name: "3,2K / 4K UHD", w: 26.40, h: 14.85 },
+          { id: "hd-28", name: "HD / ARRIRAW 16:9 2,8K", w: 23.76, h: 13.37 },
+          { id: "2k", name: "2K", w: 23.66, h: 13.30 },
+          { id: "s16", name: "S16 HD", w: 13.20, h: 7.43 }
+        ]
+      },
+      {
+        id: "alexa-mini-lf",
+        name: "ARRI Alexa Mini LF",
+        modes: [
+          { id: "og-45", name: "4,5K LF 3:2 Open Gate", w: 36.70, h: 25.54 },
+          { id: "lf-239", name: "4,5K LF 2,39:1", w: 36.70, h: 15.31 },
+          { id: "lf-43-169", name: "4,3K LF 16:9", w: 35.64, h: 20.05 },
+          { id: "lf-38-169", name: "3,8K LF 16:9", w: 31.68, h: 17.82 },
+          { id: "lf-28-11", name: "2,8K LF 1:1", w: 23.76, h: 23.76 },
+          { id: "s35-34", name: "3,4K S35 3:2", w: 28.25, h: 18.16 },
+          { id: "s35-32", name: "3,2K S35 16:9", w: 26.40, h: 14.85 },
+          { id: "s35-28-43", name: "2,8K S35 4:3", w: 23.76, h: 17.81 },
+          { id: "s35-28-169", name: "2,8K S35 16:9", w: 23.76, h: 13.36 }
+        ]
+      },
+      {
+        id: "alexa-35",
+        name: "ARRI Alexa 35",
+        modes: [
+          { id: "og-46", name: "4,6K 3:2 Open Gate", w: 28.0, h: 19.2 },
+          { id: "46-169", name: "4,6K 16:9", w: 28.0, h: 15.7 },
+          { id: "4k-169", name: "4K 16:9", w: 24.9, h: 14.0 },
+          { id: "4k-21", name: "4K 2:1", w: 24.9, h: 12.4 },
+          { id: "38-169", name: "3,8K 16:9", w: 23.3, h: 13.1 },
+          { id: "3k-11", name: "3K 1:1", w: 18.7, h: 18.7 },
+          { id: "2k-s16", name: "2K 16:9 S16", w: 12.4, h: 7.0 }
+        ]
+      },
+      {
+        id: "red-gemini",
+        name: "RED Gemini 5K S35",
+        modes: [
+          { id: "5k-fh", name: "5K Full Height 1,7:1", w: 30.72, h: 18.00 },
+          { id: "5k-ff", name: "5K Full Format", w: 30.72, h: 16.20 },
+          { id: "5k-24", name: "5K 2,4:1", w: 30.72, h: 12.96 },
+          { id: "5k-169", name: "5K 16:9", w: 28.80, h: 16.20 },
+          { id: "4k-ff", name: "4K Full Format", w: 24.58, h: 12.96 },
+          { id: "4k-169", name: "4K 16:9", w: 23.04, h: 12.96 },
+          { id: "4k-43", name: "4K 4:3", w: 23.04, h: 17.28 }
+        ]
+      },
+      {
+        id: "vraptor-vv",
+        name: "RED V-Raptor 8K VV",
+        modes: [
+          { id: "8k-179", name: "8K 17:9", w: 40.96, h: 21.60 },
+          { id: "8k-169", name: "8K 16:9", w: 38.40, h: 21.60 },
+          { id: "8k-21", name: "8K 2:1", w: 40.96, h: 20.48 },
+          { id: "8k-24", name: "8K 2,4:1", w: 40.96, h: 17.28 },
+          { id: "8k-11", name: "8K 1:1", w: 21.60, h: 21.60 },
+          { id: "6k-179", name: "6K 17:9", w: 30.72, h: 16.20 },
+          { id: "6k-169", name: "6K 16:9", w: 28.80, h: 16.20 },
+          { id: "4k-179", name: "4K 17:9", w: 20.48, h: 10.80 },
+          { id: "4k-169", name: "4K 16:9", w: 19.20, h: 10.80 }
+        ]
+      },
+      {
+        id: "vraptor-s35",
+        name: "RED V-Raptor 8K S35",
+        modes: [
+          { id: "8k-179", name: "8K 17:9", w: 26.21, h: 13.82 },
+          { id: "8k-169", name: "8K 16:9", w: 24.58, h: 13.82 },
+          { id: "8k-24", name: "8K 2,4:1", w: 26.21, h: 11.06 },
+          { id: "6k-179", name: "6K 17:9", w: 19.66, h: 10.37, derived: true },
+          { id: "6k-169", name: "6K 16:9", w: 18.43, h: 10.37, derived: true },
+          { id: "4k-179", name: "4K 17:9", w: 13.11, h: 6.91, derived: true },
+          { id: "4k-169", name: "4K 16:9", w: 12.29, h: 6.91, derived: true }
+        ]
+      },
+      {
+        id: "komodo",
+        name: "RED Komodo 6K",
+        modes: [
+          { id: "6k-179", name: "6K 17:9", w: 27.03, h: 14.26 },
+          { id: "6k-169", name: "6K 16:9", w: 25.34, h: 14.26 },
+          { id: "6k-21", name: "6K 2:1", w: 27.03, h: 13.52 },
+          { id: "6k-24", name: "6K 2,4:1", w: 27.03, h: 11.40 },
+          { id: "5k-179", name: "5K 17:9", w: 22.53, h: 11.88 },
+          { id: "4k-179", name: "4K 17:9", w: 18.02, h: 9.50 },
+          { id: "4k-169", name: "4K 16:9", w: 16.90, h: 9.50 }
+        ]
+      },
+      {
+        id: "venice",
+        name: "Sony Venice",
+        modes: [
+          { id: "6k-32", name: "6K 3:2", w: 35.9, h: 24.0 },
+          { id: "6k-179", name: "6K 17:9", w: 36.0, h: 19.0 },
+          { id: "6k-185", name: "6K 1,85:1", w: 36.0, h: 19.4 },
+          { id: "6k-239", name: "6K 2,39:1", w: 35.9, h: 15.0 },
+          { id: "57-169", name: "5,7K 16:9", w: 33.7, h: 19.0 },
+          { id: "4k-179", name: "4K 17:9", w: 24.3, h: 12.8 },
+          { id: "38-169", name: "3,8K 16:9", w: 22.8, h: 12.8 },
+          { id: "4k-239", name: "4K 2,39:1", w: 24.3, h: 10.3 }
+        ]
+      },
+      {
+        id: "venice2-86",
+        name: "Sony Venice 2 (8,6K)",
+        modes: [
+          { id: "86-32", name: "8,6K 3:2", w: 35.9, h: 24.0 },
+          { id: "86-179", name: "8,6K 17:9", w: 35.9, h: 19.0 },
+          { id: "82-179", name: "8,2K 17:9", w: 34.1, h: 18.0 },
+          { id: "82-239", name: "8,2K 2,39:1", w: 34.1, h: 14.3 },
+          { id: "81-169", name: "8,1K 16:9", w: 33.8, h: 19.0 },
+          { id: "76-169", name: "7,6K 16:9", w: 32.0, h: 18.0 },
+          { id: "58-179", name: "5,8K 17:9 S35", w: 24.1, h: 12.7 },
+          { id: "54-169", name: "5,4K 16:9 S35", w: 22.6, h: 12.7 },
+          { id: "55-239", name: "5,5K 2,39:1 S35", w: 22.8, h: 9.55 }
+        ]
+      },
+      {
+        id: "venice2-6k",
+        name: "Sony Venice 2 (6K)",
+        modes: [
+          { id: "6k-32", name: "6K 3:2", w: 35.9, h: 24.0 },
+          { id: "6k-179", name: "6K 17:9", w: 36.0, h: 19.0 },
+          { id: "6k-185", name: "6K 1,85:1", w: 36.0, h: 19.4 },
+          { id: "6k-239", name: "6K 2,39:1", w: 35.9, h: 15.0 },
+          { id: "57-169", name: "5,7K 16:9", w: 33.7, h: 19.0 },
+          { id: "4k-179", name: "4K 17:9", w: 24.3, h: 12.8 },
+          { id: "38-169", name: "3,8K 16:9", w: 22.8, h: 12.8 },
+          { id: "4k-239", name: "4K 2,39:1", w: 24.3, h: 10.3 }
+        ]
+      },
+      {
+        id: "other",
+        name: "Другое",
+        generic: true,
+        modes: [
+          { id: "ff", name: "Полный кадр 36×24", w: 36, h: 24, coc: 0.030 },
+          { id: "aps-c-15", name: "APS-C Nikon/Sony 1,5×", w: 23.5, h: 15.6, coc: 0.020 },
+          { id: "aps-c-16", name: "APS-C Canon 1,6×", w: 22.3, h: 14.9, coc: 0.019 },
+          { id: "m43", name: "Micro 4/3", w: 17.3, h: 13.0, coc: 0.015 },
+          { id: "mf4433", name: "Средний формат 44×33", w: 44, h: 33, coc: 0.037 },
+          { id: "custom", name: "Свой кружок нерезкости" }
+        ]
+      }
+    ];
+
+    const DIST_MIN = 0.2;
+    const DIST_MAX = 200;
+    const STORAGE_KEY = "lazy-camera-dof-v1";
+    const LEGACY_KEYS = [];
+    const DEFAULT_CAMERA = "alexa-35";
+    const DEFAULT_MODE = "og-46";
+
+    const $ = (id) => document.getElementById(id);
+    const el = {
+      focal: $("focal"),
+      focalRange: $("focalRange"),
+      aperture: $("aperture"),
+      apertureRange: $("apertureRange"),
+      apertureCustom: $("apertureCustom"),
+      customApertureRow: $("customApertureRow"),
+      distance: $("distance"),
+      distanceRange: $("distanceRange"),
+      camera: $("camera"),
+      mode: $("mode"),
+      coc: $("coc"),
+      customCocRow: $("customCocRow"),
+      formatMeta: $("formatMeta"),
+      outNear: $("outNear"),
+      outFar: $("outFar"),
+      outFocus: $("outFocus"),
+      outTotal: $("outTotal"),
+      outHyperfocal: $("outHyperfocal"),
+      outSplit: $("outSplit"),
+      zone: $("zone"),
+      focusMark: $("focusMark"),
+      zoneNearLbl: $("zoneNearLbl"),
+      zoneFarLbl: $("zoneFarLbl"),
+      themeToggle: $("themeToggle"),
+      iconMoon: $("iconMoon"),
+      iconSun: $("iconSun"),
+      themeColorMeta: $("themeColorMeta"),
+      statusBarMeta: $("statusBarMeta"),
+      miraOpen: $("miraOpen"),
+      miraClose: $("miraClose"),
+      miraOverlay: $("miraOverlay"),
+    };
+
+    function formatStop(n) {
+      if (Number.isInteger(n)) return String(n);
+      return String(n).replace(".", ",");
+    }
+
+    function formatMm(n, digits) {
+      const d = digits == null ? (Math.abs(n - Math.round(n)) < 1e-9 ? 0 : 2) : digits;
+      let s = Number(n).toFixed(d);
+      if (digits == null && d > 0) s = s.replace(/0+$/, "").replace(/\.$/, "");
+      return s.replace(".", ",");
+    }
+
+    function findCamera(id) {
+      return CAMERAS.find((c) => c.id === id) || CAMERAS[CAMERAS.length - 1];
+    }
+
+    function findMode(camera, id) {
+      return camera.modes.find((m) => m.id === id) || camera.modes[0];
+    }
+
+    function presetCoc(mode) {
+      if (mode.coc != null) return mode.coc;
+      if (mode.w > 0 && mode.h > 0) return Math.hypot(mode.w, mode.h) / 1500;
+      return NaN;
+    }
+
+    function populateSelects() {
+      el.aperture.innerHTML = STOPS.map((s) => `<option value="t${s.k}">${s.label}</option>`).join("")
+        + '<option value="custom">Другое…</option>';
+      applyApertureIndex(STOPS.findIndex((s) => s.k === 9));
+      el.apertureRange.max = String(STOPS.length - 1);
+      el.camera.innerHTML = CAMERAS.map((c) => `<option value="${c.id}">${c.name}</option>`).join("");
+      el.camera.value = DEFAULT_CAMERA;
+      fillModes(DEFAULT_CAMERA, DEFAULT_MODE);
+    }
+
+    function fillModes(cameraId, modeId) {
+      const camera = findCamera(cameraId);
+      el.mode.innerHTML = camera.modes.map((m) => `<option value="${m.id}">${m.name}</option>`).join("");
+      const exists = camera.modes.some((m) => m.id === modeId);
+      el.mode.value = exists ? modeId : camera.modes[0].id;
+    }
+
+    function parseNum(value) {
+      if (typeof value !== "string") return Number(value);
+      return Number(String(value).trim().replace(",", "."));
+    }
+
+    function clamp(n, min, max) {
+      return Math.min(max, Math.max(min, n));
+    }
+
+    function distToSlider(meters) {
+      const t = Math.log(clamp(meters, DIST_MIN, DIST_MAX) / DIST_MIN) / Math.log(DIST_MAX / DIST_MIN);
+      return Math.round(t * 1000);
+    }
+
+    function sliderToDist(pos) {
+      return DIST_MIN * Math.pow(DIST_MAX / DIST_MIN, Number(pos) / 1000);
+    }
+
+    function formatMeters(m, { compactInfinity = true } = {}) {
+      if (!Number.isFinite(m)) return compactInfinity ? "∞" : "бесконечность";
+      const abs = Math.abs(m);
+      let decimals;
+      if (abs >= 1000) decimals = 0;
+      else if (abs >= 100) decimals = 1;
+      else if (abs >= 1) decimals = 2;
+      else decimals = 3;
+      let n = m.toFixed(decimals);
+      if (abs >= 1) n = n.replace(/\.?0+$/, "");
+      return `${n.replace(".", ",")}\u00a0м`;
+    }
+
+    function compute(fMm, N, cocMm, sM) {
+      if (!(fMm > 0 && N > 0 && cocMm > 0 && sM > 0)) return null;
+      const f = fMm;
+      const s = sM * 1000;
+      const H = (f * f) / (N * cocMm) + f;
+      const near = s * (H - f) / (H + s - 2 * f);
+      let far = Infinity;
+      if (s < H) far = s * (H - f) / (H - s);
+      return {
+        H: H / 1000,
+        near: near / 1000,
+        far: Number.isFinite(far) ? far / 1000 : Infinity,
+        total: Number.isFinite(far) ? (far - near) / 1000 : Infinity,
+        front: (s - near) / 1000,
+        behind: Number.isFinite(far) ? (far - s) / 1000 : Infinity,
+        s: sM,
+      };
+    }
+
+    function currentAperture() {
+      if (el.aperture.value === "custom") return parseNum(el.apertureCustom.value);
+      const idx = stopIndexFromValue(el.aperture.value);
+      if (idx >= 0) return STOPS[idx].N;
+      return NaN;
+    }
+
+    function currentSelection() {
+      const camera = findCamera(el.camera.value);
+      const mode = findMode(camera, el.mode.value);
+      return { camera, mode };
+    }
+
+    function hasCocOverride() {
+      const raw = el.coc.value.trim();
+      if (!raw) return false;
+      const n = parseNum(raw);
+      return n > 0;
+    }
+
+    function currentCoc() {
+      const { mode } = currentSelection();
+      if (hasCocOverride() || mode.id === "custom") return parseNum(el.coc.value);
+      return presetCoc(mode);
+    }
+
+    function updateFormatMeta() {
+      const { camera, mode } = currentSelection();
+      const coc = presetCoc(mode);
+      const cocTxt = Number.isFinite(coc) ? formatMm(coc, 3) + "\u00a0мм" : "—";
+      if (mode.w > 0 && mode.h > 0) {
+        el.formatMeta.textContent = `${formatMm(mode.w)} × ${formatMm(mode.h)}\u00a0мм  ·  CoC ${cocTxt}`;
+      } else {
+        el.formatMeta.textContent = `CoC ${cocTxt}`;
+      }
+      el.customCocRow.classList.add("on");
+      if (mode.id === "custom" && !el.coc.value) {
+        el.coc.placeholder = "0,030";
+      } else if (!hasCocOverride() && Number.isFinite(coc)) {
+        el.coc.placeholder = formatMm(coc, 3);
+      }
+    }
+
+    function syncCustomVisibility() {
+      el.customApertureRow.classList.toggle("on", el.aperture.value === "custom");
+      updateFormatMeta();
+    }
+
+    function formatZoneLabel(m) {
+      if (!Number.isFinite(m)) return "\u221e";
+      const abs = Math.abs(m);
+      let decimals;
+      if (abs >= 1000) decimals = 0;
+      else if (abs >= 100) decimals = 1;
+      else if (abs >= 1) decimals = 2;
+      else decimals = 3;
+      let n = m.toFixed(decimals);
+      if (abs >= 1) n = n.replace(/\.?0+$/, "");
+      return n.replace(".", ",");
+    }
+
+    function placeZoneLabel(node, pct) {
+      node.hidden = false;
+      node.style.left = pct + "%";
+      node.classList.remove("edge-left", "edge-right", "edge-mid", "below");
+      if (pct <= 6) node.classList.add("edge-left");
+      else if (pct >= 94) node.classList.add("edge-right");
+      else node.classList.add("edge-mid");
+    }
+
+    function updateVisual(res) {
+      const farIsInf = !Number.isFinite(res.far);
+      const max = farIsInf ? Math.max(res.s * 2, res.H * 1.15, 1) : Math.max(res.far * 1.2, res.s * 1.15, 0.5);
+      const pct = (x) => clamp((x / max) * 100, 0, 100);
+      const left = pct(Math.max(0, res.near));
+      const right = farIsInf ? 100 : pct(res.far);
+      el.zone.style.left = left + "%";
+      el.zone.style.width = Math.max(0.8, right - left) + "%";
+      el.zone.style.borderRadius = farIsInf ? "99px 0 0 99px" : "99px";
+      el.focusMark.style.left = pct(res.s) + "%";
+      el.zoneNearLbl.textContent = formatZoneLabel(res.near);
+      el.zoneFarLbl.textContent = formatZoneLabel(res.far);
+      placeZoneLabel(el.zoneNearLbl, left);
+      placeZoneLabel(el.zoneFarLbl, right);
+      const nr = el.zoneNearLbl.getBoundingClientRect();
+      const fr = el.zoneFarLbl.getBoundingClientRect();
+      if (nr.right + 4 > fr.left && nr.left < fr.right) el.zoneFarLbl.classList.add("below");
+    }
+
+    function render() {
+      updateFormatMeta();
+      const fMm = parseNum(el.focal.value);
+      const N = currentAperture();
+      const coc = currentCoc();
+      const sM = parseNum(el.distance.value);
+      const res = compute(fMm, N, coc, sM);
+
+      if (!res || !Number.isFinite(res.near) || !Number.isFinite(res.H) || res.near <= 0) {
+        el.outNear.textContent = "—";
+        el.outFar.textContent = "—";
+        el.outFocus.textContent = Number.isFinite(sM) && sM > 0 ? formatMeters(sM) : "—";
+        el.outTotal.textContent = "—";
+        el.outHyperfocal.textContent = "—";
+        el.outSplit.textContent = "—";
+        el.zoneNearLbl.hidden = true;
+        el.zoneFarLbl.hidden = true;
+        return;
+      }
+
+      el.outNear.textContent = formatMeters(res.near);
+      el.outFar.textContent = formatMeters(res.far);
+      el.outFar.classList.toggle("inf", !Number.isFinite(res.far));
+      el.outFocus.textContent = formatMeters(res.s);
+      el.outTotal.textContent = formatMeters(res.total, { compactInfinity: false });
+      el.outHyperfocal.textContent = formatMeters(res.H);
+      el.outSplit.textContent = `${formatMeters(res.front)} / ${formatMeters(res.behind, { compactInfinity: false })}`;
+      updateVisual(res);
+      saveState();
+    }
+
+    function saveState() {
+      const data = {
+        focal: el.focal.value,
+        aperture: el.aperture.value,
+        apertureCustom: el.apertureCustom.value,
+        distance: el.distance.value,
+        camera: el.camera.value,
+        mode: el.mode.value,
+        cocOverride: el.coc.value,
+        theme: document.documentElement.getAttribute("data-theme") || "",
+      };
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (_) {}
+    }
+
+    function readStored() {
+      try {
+        const cur = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+        if (cur) return cur;
+      } catch (_) {}
+      for (const key of LEGACY_KEYS) {
+        try {
+          const raw = JSON.parse(localStorage.getItem(key) || "null");
+          if (!raw) continue;
+          let data = raw;
+          if (key === "dof-grip-v1") {
+            const known = ["ff", "aps-c-15", "aps-c-16", "m43", "mf4433", "custom"];
+            data = {
+              ...raw,
+              camera: "other",
+              mode: known.includes(raw.sensor) ? raw.sensor : "ff",
+              cocOverride: raw.sensor === "custom" ? raw.coc : "",
+            };
+          }
+          return {
+            ...data,
+            camera: DEFAULT_CAMERA,
+            mode: DEFAULT_MODE,
+            cocOverride: "",
+          };
+        } catch (_) {}
+      }
+      return null;
+    }
+
+    function loadState() {
+      const themeParam = new URLSearchParams(location.search).get("theme");
+      const data = readStored();
+      if (!data) {
+        applyTheme(themeParam === "light" || themeParam === "dark" ? themeParam : "dark", false);
+        el.distanceRange.value = String(distToSlider(3));
+        return;
+      }
+      if (data.focal) {
+        el.focal.value = data.focal;
+        el.focalRange.value = String(clamp(parseNum(data.focal), 8, 400));
+      }
+      if (data.aperture) {
+        if (data.aperture === "custom") {
+          el.aperture.value = "custom";
+        } else {
+          const idx = stopIndexFromValue(data.aperture);
+          if (idx >= 0) applyApertureIndex(idx);
+        }
+      }
+      if (data.apertureCustom) el.apertureCustom.value = data.apertureCustom;
+      if (data.distance) {
+        el.distance.value = data.distance;
+        el.distanceRange.value = String(distToSlider(parseNum(data.distance)));
+      }
+      const cameraId = data.camera && findCamera(data.camera).id === data.camera ? data.camera : "other";
+      el.camera.value = cameraId;
+      fillModes(cameraId, data.mode);
+      if (data.cocOverride) el.coc.value = data.cocOverride;
+      const theme = themeParam === "light" || themeParam === "dark"
+        ? themeParam
+        : (data.theme === "light" || data.theme === "dark" ? data.theme : "dark");
+      applyTheme(theme, false);
+      syncCustomVisibility();
+    }
+
+    function applyTheme(theme, persist) {
+      if (theme === "light") document.documentElement.setAttribute("data-theme", "light");
+      else document.documentElement.removeAttribute("data-theme");
+      const light = theme === "light";
+      el.iconMoon.hidden = !light;
+      el.iconSun.hidden = light;
+      el.themeToggle.setAttribute("aria-label", light ? "Включить тёмную тему" : "Включить светлую тему");
+      el.themeColorMeta.setAttribute("content", light ? "#D9D9D6" : "#0B0907");
+      if (el.statusBarMeta) {
+        el.statusBarMeta.setAttribute("content", light ? "default" : "black-translucent");
+      }
+      if (persist !== false) saveState();
+    }
+
+    function bind() {
+      el.focal.addEventListener("input", () => {
+        const v = parseNum(el.focal.value);
+        if (Number.isFinite(v)) el.focalRange.value = String(clamp(v, 8, 400));
+        render();
+      });
+      el.focalRange.addEventListener("input", () => {
+        el.focal.value = el.focalRange.value;
+        render();
+      });
+
+      el.aperture.addEventListener("change", () => {
+        syncCustomVisibility();
+        if (el.aperture.value !== "custom") {
+          const idx = stopIndexFromValue(el.aperture.value);
+          if (idx >= 0) el.apertureRange.value = String(idx);
+        }
+        render();
+      });
+      el.apertureRange.addEventListener("input", () => {
+        applyApertureIndex(Number(el.apertureRange.value));
+        syncCustomVisibility();
+        render();
+      });
+      el.apertureCustom.addEventListener("input", render);
+
+      el.distance.addEventListener("input", () => {
+        const v = parseNum(el.distance.value);
+        if (Number.isFinite(v) && v > 0) el.distanceRange.value = String(distToSlider(v));
+        render();
+      });
+      el.distanceRange.addEventListener("input", () => {
+        const v = sliderToDist(el.distanceRange.value);
+        const rounded = v >= 10 ? v.toFixed(1) : v.toFixed(2);
+        el.distance.value = String(parseFloat(rounded));
+        render();
+      });
+
+      el.camera.addEventListener("change", () => {
+        fillModes(el.camera.value);
+        el.coc.value = "";
+        syncCustomVisibility();
+        render();
+      });
+      el.mode.addEventListener("change", () => {
+        el.coc.value = "";
+        syncCustomVisibility();
+        render();
+      });
+      el.coc.addEventListener("input", render);
+
+      el.themeToggle.addEventListener("click", () => {
+        const next = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
+        applyTheme(next, true);
+      });
+
+      function openMira() {
+        el.miraOverlay.hidden = false;
+        document.body.classList.add("mira-open");
+        el.miraClose.focus();
+        const req = el.miraOverlay.requestFullscreen || el.miraOverlay.webkitRequestFullscreen;
+        if (req) Promise.resolve(req.call(el.miraOverlay)).catch(() => {});
+      }
+
+      function closeMira() {
+        el.miraOverlay.hidden = true;
+        document.body.classList.remove("mira-open");
+        const done = document.fullscreenElement || document.webkitFullscreenElement;
+        const exit = document.exitFullscreen || document.webkitExitFullscreen;
+        if (done && exit) Promise.resolve(exit.call(document)).catch(() => {});
+      }
+
+      el.miraOpen.addEventListener("click", openMira);
+      el.miraClose.addEventListener("click", (ev) => { ev.stopPropagation(); ev.preventDefault(); closeMira(); });
+      document.addEventListener("keydown", (ev) => {
+        if (ev.key === "Escape" && !el.miraOverlay.hidden) closeMira();
+      });
+    }
+
+
+    function cineReadout(k) {
+      const rem = k % 3;
+      const mark = STOP_MARKS[k - rem];
+      if (rem === 0) return mark;
+      return mark + " +" + (rem === 1 ? "\u2153" : "\u2154");
+    }
+
+    function bindApertureScale() {
+      const root = $("apertureScale");
+      const scroller = $("apertureScroller");
+      const readout = $("apertureReadout");
+      if (!root || !scroller || !readout) return;
+
+      const STEP = 38;
+      scroller.innerHTML = "";
+      STOPS.forEach((s, i) => {
+        const tick = document.createElement("button");
+        tick.type = "button";
+        tick.className = "ap-tick " + (s.k % 3 === 0 ? "full" : "third");
+        tick.style.left = (i * STEP) + "px";
+        tick.dataset.idx = String(i);
+        tick.tabIndex = -1;
+        const mark = document.createElement("span");
+        mark.className = "ap-tick-mark";
+        tick.appendChild(mark);
+        if (s.k % 3 === 0) {
+          const lab = document.createElement("span");
+          lab.className = "ap-tick-lab";
+          lab.textContent = s.label;
+          tick.appendChild(lab);
+        }
+        scroller.appendChild(tick);
+      });
+      scroller.style.width = ((STOPS.length - 1) * STEP) + "px";
+
+      let lastX = 0;
+      let current = 9;
+      let dragging = false;
+      let didMove = false;
+      let startPtr = 0;
+      let startX = 0;
+      let pointerId = null;
+
+      function mid() { return root.clientWidth / 2; }
+      function offsetFor(idx) { return mid() - idx * STEP; }
+      function idxFromX(x) {
+        return clamp(Math.round((mid() - x) / STEP), 0, STOPS.length - 1);
+      }
+      function setTransform(x, animate) {
+        lastX = x;
+        scroller.style.transition = animate ? "transform 0.18s ease-out" : "none";
+        scroller.style.transform = "translate3d(" + x + "px,0,0)";
+      }
+      function paint(idx) {
+        current = idx;
+        const ticks = scroller.children;
+        for (let i = 0; i < ticks.length; i++) {
+          ticks[i].classList.toggle("is-on", i === idx);
+        }
+        const s = STOPS[idx];
+        readout.textContent = cineReadout(s.k);
+        root.setAttribute("aria-valuenow", String(s.N));
+        root.setAttribute("aria-valuetext", cineReadout(s.k));
+      }
+
+      function commit(idx, animate) {
+        applyApertureIndex(idx);
+        paint(idx);
+        setTransform(offsetFor(idx), animate);
+        syncCustomVisibility();
+        render();
+      }
+
+      window.syncApertureScale = function (idx) {
+        if (typeof idx !== "number") {
+          idx = stopIndexFromValue(el.aperture.value);
+          if (idx < 0) idx = 9;
+        }
+        paint(idx);
+        setTransform(offsetFor(idx), false);
+      };
+
+      root.addEventListener("pointerdown", (e) => {
+        if (e.button != null && e.button !== 0) return;
+        dragging = true;
+        didMove = false;
+        pointerId = e.pointerId;
+        startPtr = e.clientX;
+        startX = lastX;
+        scroller.style.transition = "none";
+        try { root.setPointerCapture(e.pointerId); } catch (_) {}
+        e.preventDefault();
+      });
+
+      root.addEventListener("pointermove", (e) => {
+        if (!dragging || e.pointerId !== pointerId) return;
+        const dx = e.clientX - startPtr;
+        if (Math.abs(dx) > 4) didMove = true;
+        const lo = offsetFor(STOPS.length - 1);
+        const hi = offsetFor(0);
+        let x = startX + dx;
+        if (x > hi) x = hi + (x - hi) * 0.25;
+        else if (x < lo) x = lo + (x - lo) * 0.25;
+        setTransform(x, false);
+        const near = idxFromX(Math.max(lo, Math.min(hi, x)));
+        if (near !== current) {
+          applyApertureIndex(near);
+          paint(near);
+          render();
+        }
+      });
+
+      function endDrag(e) {
+        if (!dragging) return;
+        if (e && pointerId != null && e.pointerId !== pointerId) return;
+        dragging = false;
+        const idx = idxFromX(lastX);
+        commit(idx, true);
+        pointerId = null;
+      }
+
+      root.addEventListener("pointerup", endDrag);
+      root.addEventListener("pointercancel", endDrag);
+
+      scroller.addEventListener("click", (e) => {
+        if (didMove) return;
+        const tick = e.target.closest(".ap-tick");
+        if (!tick) return;
+        commit(Number(tick.dataset.idx), true);
+      });
+
+      root.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
+          e.preventDefault();
+          commit(Math.max(0, current - 1), true);
+        } else if (e.key === "ArrowRight" || e.key === "ArrowUp") {
+          e.preventDefault();
+          commit(Math.min(STOPS.length - 1, current + 1), true);
+        } else if (e.key === "Home") {
+          e.preventDefault();
+          commit(0, true);
+        } else if (e.key === "End") {
+          e.preventDefault();
+          commit(STOPS.length - 1, true);
+        }
+      });
+
+      window.addEventListener("resize", () => {
+        setTransform(offsetFor(current), false);
+      });
+
+      window.syncApertureScale(stopIndexFromValue(el.aperture.value));
+    }
+
+    populateSelects();
+    loadState();
+    bindApertureScale();
+    bind();
+    render();
+    if (window.syncApertureScale) window.syncApertureScale();
+
+    if ("serviceWorker" in navigator) {
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (refreshing) return;
+        refreshing = true;
+        location.reload();
+      });
+
+      const registerAndUpdate = () => {
+        navigator.serviceWorker
+          .register("./sw.js?v=1", { updateViaCache: "none" })
+          .then((reg) => { reg.update().catch(() => {}); })
+          .catch(() => {});
+      };
+      if (document.readyState === "complete") registerAndUpdate();
+      else window.addEventListener("load", registerAndUpdate);
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState !== "visible") return;
+        navigator.serviceWorker.getRegistration().then((reg) => {
+          if (reg) reg.update().catch(() => {});
+        });
+      });
+    }
+  </script>
+  <script src="cameras.js?v=1"></script>
+  <script src="cam.js?v=1"></script>
+</body>
+</html>
