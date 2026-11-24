@@ -834,6 +834,81 @@
     .cam-notes li { margin-bottom: 4px; }
     .cam-notes .sources a { color: var(--fg); word-break: break-word; }
     .data-date { margin: 0; font-size: 0.62rem; color: var(--fg-dim); }
+    /* ── Lazy Camera: вкладка «Оптика» ── */
+    .tabs.tabs-3 { grid-template-columns: 1fr 1fr 1.35fr; }
+    .tabs.tabs-3 .tab { padding: 0 4px; letter-spacing: 0.05em; }
+    .seg.seg-4 { grid-template-columns: repeat(4, 1fr); }
+    .opt-view { margin-bottom: 10px; }
+    .opt-sec { margin-bottom: 8px; }
+    .opt-sec-note { margin: 0 2px 10px; font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg-dim); }
+    .lens-card { padding: 0; margin-bottom: 10px; }
+    .lens-card > summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 11px 34px 10px 12px;
+      position: relative;
+      display: block;
+    }
+    .lens-card > summary::-webkit-details-marker { display: none; }
+    .lens-card > summary::after {
+      content: "+";
+      position: absolute;
+      right: 13px;
+      top: 10px;
+      font-size: 1rem;
+      color: var(--fg-dim);
+    }
+    .lens-card[open] > summary::after { content: "−"; }
+    .lens-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+    .lens-brand { font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-dim); white-space: nowrap; }
+    .lens-meta { display: block; margin-top: 4px; font-size: 0.7rem; color: var(--fg); line-height: 1.4; font-variant-numeric: slashed-zero tabular-nums; }
+    .lens-body { padding: 0 12px 10px; }
+    .lens-table { border-top: 1px solid var(--line); font-variant-numeric: slashed-zero tabular-nums; }
+    .lt-row {
+      display: grid;
+      grid-template-columns: 1.25fr 0.8fr 1fr 0.8fr 0.8fr;
+      gap: 4px;
+      align-items: baseline;
+      padding: 5px 0 4px;
+      border-bottom: 1px dashed var(--line);
+      font-size: 0.76rem;
+      color: var(--fg-bright);
+    }
+    .lt-row span { text-align: right; min-width: 0; }
+    .lt-row span:first-child { text-align: left; font-weight: 600; }
+    .lt-row small { display: inline; margin-left: 4px; font-size: 0.56rem; font-weight: 400; color: var(--fg-dim); letter-spacing: 0.04em; }
+    .lt-row.lt-head { font-size: 0.58rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg-dim); border-bottom: 1px solid var(--line); }
+    .lt-row.lt-head span:first-child { font-weight: 400; }
+    .lens-notes { margin: 8px 0 6px; padding-left: 16px; font-size: 0.66rem; line-height: 1.4; color: var(--fg-dim); }
+    .lens-notes li { margin-bottom: 3px; }
+    .lens-actions { display: flex; justify-content: flex-end; }
+    .lens-actions .text-btn { height: 32px; }
+    .cov-card { padding: 10px 12px 10px; margin-bottom: 10px; }
+    .cov-svg { display: block; width: 100%; height: auto; }
+    .cov-circle { fill: var(--fill); stroke: var(--fg); stroke-width: 1.4; }
+    .cov-hatch-line { stroke: var(--fg-dim); stroke-width: 1.6; }
+    .cov-rect-out { stroke: none; }
+    .cov-rect-in { fill: var(--panel); stroke: none; }
+    .cov-rect { fill: none; stroke: var(--fg-bright); stroke-width: 1.6; }
+    .cov-rect.no { stroke-dasharray: 4 3; }
+    .cov-diag { stroke: var(--fg-dim); stroke-width: 0.8; stroke-dasharray: 2 3; }
+    .cov-cross { stroke: var(--fg-dim); stroke-width: 1; }
+    .cov-txt { fill: var(--fg-bright); font-family: inherit; font-size: 11px; }
+    .cov-txt.dim { fill: var(--fg-dim); font-size: 10px; }
+    .cov-verdict { display: flex; flex-direction: column; gap: 3px; margin-top: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); font-size: 0.72rem; line-height: 1.4; color: var(--fg); }
+    .cov-verdict .cov-title { font-weight: 600; font-size: 0.95rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg-bright); text-shadow: 0 0 8px var(--glow); }
+    .cov-verdict.ok { background: var(--fill); border-color: var(--fg); }
+    .cov-verdict.edge { border-style: dashed; border-color: var(--fg); }
+    .cov-verdict.no { background: var(--fill-press); border-color: var(--fg-bright); }
+    .cov-verdict.no .cov-title::before { content: "× "; }
+    .cov-verdict.ok .cov-title::before { content: "✓ "; }
+    .cov-verdict.edge .cov-title::before { content: "≈ "; }
+    .cov-metrics { margin-top: 8px; border-top: 1px solid var(--line); }
+    .cov-row { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0 4px; border-bottom: 1px dashed var(--line); font-size: 0.72rem; color: var(--fg-dim); font-variant-numeric: slashed-zero tabular-nums; }
+    .cov-row:last-child { border-bottom: 0; }
+    .cov-row b { font-weight: 600; color: var(--fg-bright); text-align: right; }
+    .cov-notes { margin: 8px 0 0; padding-left: 16px; font-size: 0.66rem; line-height: 1.4; color: var(--fg-dim); }
+    .cov-notes li { margin-bottom: 3px; }
   </style>
 </head>
 <body>
@@ -865,8 +940,9 @@
       </div>
     </header>
 
-    <nav class="tabs" role="tablist" aria-label="Разделы">
+    <nav class="tabs tabs-3" role="tablist" aria-label="Разделы">
       <button type="button" class="tab" role="tab" id="tabBtnCam" data-tab="cam" aria-selected="true">Камеры</button>
+      <button type="button" class="tab" role="tab" id="tabBtnOpt" data-tab="opt" aria-selected="false">Оптика</button>
       <button type="button" class="tab" role="tab" id="tabBtnDof" data-tab="dof" aria-selected="false">Глубина резкости</button>
     </nav>
 
@@ -929,6 +1005,87 @@
         <span class="lbl">Источники</span>
         <ul id="camSources" class="sources"></ul>
         <p class="data-date" id="dataDate"></p>
+      </section>
+    </div>
+
+    <div id="tabOpt" class="tab-panel" role="tabpanel" aria-labelledby="tabBtnOpt" hidden>
+      <div class="seg opt-view" id="optView" role="radiogroup" aria-label="Режим">
+        <button type="button" class="seg-btn" data-view="ref" role="radio">Справочник</button>
+        <button type="button" class="seg-btn" data-view="cov" role="radio">Покрытие</button>
+      </div>
+      <div id="optRef">
+        <div class="seg seg-4 opt-sec" id="optSec" role="radiogroup" aria-label="Формат">
+          <button type="button" class="seg-btn" data-sec="s16" role="radio">S16</button>
+          <button type="button" class="seg-btn" data-sec="s35" role="radio">S35</button>
+          <button type="button" class="seg-btn" data-sec="ff" role="radio">FF</button>
+          <button type="button" class="seg-btn" data-sec="ana" role="radio">ANAM</button>
+        </div>
+        <div class="opt-sec-note" id="optSecNote"></div>
+        <div id="optSeries"></div>
+      </div>
+      <div id="optCov" hidden>
+        <section class="card controls cam-controls">
+        <div class="field">
+          <label class="sub-label" for="covSeries" style="margin-top:0">Линейка</label>
+          <div class="select-wrap">
+            <select id="covSeries"></select>
+            <svg class="select-chevron" viewBox="0 0 12 16" aria-hidden="true" focusable="false">
+              <path d="M2 6 L6 2 L10 6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M2 10 L6 14 L10 10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>
+        <div class="field">
+          <label class="sub-label" for="covFocal" style="margin-top:0">Объектив</label>
+          <div class="select-wrap">
+            <select id="covFocal"></select>
+            <svg class="select-chevron" viewBox="0 0 12 16" aria-hidden="true" focusable="false">
+              <path d="M2 6 L6 2 L10 6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M2 10 L6 14 L10 10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>
+        <div class="field">
+          <label class="sub-label" for="covCam" style="margin-top:0">Камера</label>
+          <div class="select-wrap">
+            <select id="covCam"></select>
+            <svg class="select-chevron" viewBox="0 0 12 16" aria-hidden="true" focusable="false">
+              <path d="M2 6 L6 2 L10 6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M2 10 L6 14 L10 10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>
+        <div class="field">
+          <label class="sub-label" for="covMode" style="margin-top:0">Режим сенсора</label>
+          <div class="select-wrap">
+            <select id="covMode"></select>
+            <svg class="select-chevron" viewBox="0 0 12 16" aria-hidden="true" focusable="false">
+              <path d="M2 6 L6 2 L10 6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M2 10 L6 14 L10 10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>
+        </section>
+        <section class="card cov-card" aria-live="polite">
+          <svg class="cov-svg" id="covSvg" viewBox="0 0 320 230" role="img" aria-label="Пятно объектива и кадр сенсора"></svg>
+          <div class="cov-verdict" id="covVerdict"></div>
+          <div class="cov-metrics" id="covMetrics"></div>
+          <ul class="cov-notes" id="covNote"></ul>
+        </section>
+      </div>
+      <section class="card cam-notes">
+        <span class="lbl">Обозначения</span>
+        <ul class="legend">
+          <li><b>F</b> — фокусное расстояние, мм; <b>T</b> — максимальная светосила (T-стоп).</li>
+          <li><b>МДФ</b> — минимальная дистанция фокусировки, м, от плоскости сенсора (если производитель не оговорил иное).</li>
+          <li><b>Ø</b> — диаметр передней части объектива под накидной компендиум / clamp-on адаптер, мм.</li>
+          <li><b>кг</b> — вес по данным производителя (у Cooke — с PL-байонетом).</li>
+          <li><b>Пятно</b> — диаметр круга изображения по данным производителя; <b>формат</b> — производитель указывает только формат кадра, в расчёте берём его диагональ.</li>
+          <li><b>н/д</b> — производитель не публикует значение.</li>
+        </ul>
+        <span class="lbl">Источники</span>
+        <ul id="optSources" class="sources"></ul>
+        <p class="data-date" id="optDate"></p>
       </section>
     </div>
 
@@ -1870,7 +2027,7 @@
 
       const registerAndUpdate = () => {
         navigator.serviceWorker
-          .register("./sw.js?v=1", { updateViaCache: "none" })
+          .register("./sw.js?v=2", { updateViaCache: "none" })
           .then((reg) => { reg.update().catch(() => {}); })
           .catch(() => {});
       };
@@ -1885,7 +2042,9 @@
       });
     }
   </script>
-  <script src="cameras.js?v=1"></script>
-  <script src="cam.js?v=1"></script>
+  <script src="cameras.js?v=2"></script>
+  <script src="cam.js?v=2"></script>
+  <script src="lenses.js?v=1"></script>
+  <script src="optics.js?v=1"></script>
 </body>
 </html>

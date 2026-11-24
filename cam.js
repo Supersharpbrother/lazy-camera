@@ -16,8 +16,9 @@
     cam: $("camSelect"), meta: $("camMeta"), seg: $("opticsSeg"), sqWrap: $("sqWrap"), sqChips: $("sqChips"),
     fps: $("fpsInput"), fpsChips: $("fpsChips"), famChips: $("famChips"), summary: $("camSummary"),
     showAll: $("showAllBtn"), modes: $("camModes"), notes: $("camNotes"), sources: $("camSources"),
-    dataDate: $("dataDate"), tabCam: $("tabCam"), tabDof: $("tabDof")
+    dataDate: $("dataDate"), tabCam: $("tabCam"), tabDof: $("tabDof"), tabOpt: $("tabOpt")
   };
+  const TABS = ["cam", "opt", "dof"];
 
   const state = { tab: "cam", cam: "alexa-35", optics: "sph", sq: 2, fps: 24, fam: "all", all: false };
   try { Object.assign(state, JSON.parse(localStorage.getItem(KEY) || "{}")); } catch (_) {}
@@ -38,10 +39,12 @@
 
   // ── tabs ──
   function setTab(tab) {
-    state.tab = tab === "dof" ? "dof" : "cam";
+    state.tab = TABS.includes(tab) ? tab : "cam";
     document.querySelectorAll(".tab").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === state.tab)));
     el.tabCam.hidden = state.tab !== "cam";
     el.tabDof.hidden = state.tab !== "dof";
+    if (el.tabOpt) el.tabOpt.hidden = state.tab !== "opt";
+    window.dispatchEvent(new CustomEvent("lc-tab", { detail: state.tab }));
     if (state.tab === "dof") {
       requestAnimationFrame(() => {
         window.dispatchEvent(new Event("resize"));
