@@ -69,6 +69,8 @@
     const open = state.open[s.id] != null ? state.open[s.id] : false;
     let h = '<details class="card lens-card" data-id="' + s.id + '"' + (open ? " open" : "") + ">";
     const tags = (showSec ? [secOf(s.sec).label] : []).concat((s.tags || []).map((t) => TAGS[t]));
+    const VER = ["? 1 источник", "✓ частично", "✓✓ 2 источника"];
+    if (s.ver) tags.push(VER[s.ver.s]);
     h += '<summary><span class="lens-head"><span class="mode-name">' + esc(s.name) + '</span><span class="lens-brand">' + esc(s.brand) + "</span></span>" +
       (tags.length ? '<span class="lens-tags">' + tags.map((t) => '<span class="lens-tag">' + esc(t) + "</span>").join("") + "</span>" : "") +
       '<span class="lens-meta">' + esc(seriesMeta(s)) + "</span></summary>";
@@ -86,6 +88,12 @@
     const notes = [s.icNote];
     if (!s.mod) notes.push("МДФ: производитель не уточняет точку отсчёта.");
     (s.notes || []).forEach((n) => notes.push(n));
+    if (s.ver) {
+      const FN = { focal: "фокусные", T: "T", mod: "МДФ", dia: "Ø", kg: "вес", ic: "пятно" };
+      notes.push(s.ver.s === 2 ? "Проверка: все данные подтверждены минимум двумя независимыми источниками."
+        : "Проверка: без второго источника — " + s.ver.w.map((f) => FN[f] || f).join(", ") + "." +
+          (s.ver.ok.length ? " Двумя источниками подтверждено: " + s.ver.ok.map((f) => FN[f] || f).join(", ") + "." : ""));
+    }
     h += '<ul class="lens-notes">' + notes.map((n) => "<li>" + esc(n) + "</li>").join("") + "</ul>";
     h += '<p class="lens-src">Источник: ' + s.src.map((k) => SOURCES[k]).filter(Boolean).map((x) => '<a href="' + esc(x.u) + '" target="_blank" rel="noopener noreferrer">' + esc(x.t) + "</a>").join("; ") + "</p>";
     h += '<div class="lens-actions"><button type="button" class="text-btn wide" data-cover="' + s.id + '">Покрытие на камере →</button></div>';

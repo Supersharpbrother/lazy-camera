@@ -2065,7 +2065,7 @@
 
       const registerAndUpdate = () => {
         navigator.serviceWorker
-          .register("./sw.js?v=4", { updateViaCache: "none" })
+          .register("./sw.js?v=5", { updateViaCache: "none" })
           .then((reg) => { reg.update().catch(() => {}); })
           .catch(() => {});
       };
@@ -2082,8 +2082,8 @@
   </script>
   <script src="cameras.js?v=3"></script>
   <script src="cam.js?v=3"></script>
-  <script src="lenses.js?v=4"></script>
+  <script src="lenses.js?v=5"></script>
   <script src="coverage.js?v=4"></script>
-  <script src="optics.js?v=4"></script>
+  <script src="optics.js?v=5"></script>
 </body>
 </html>

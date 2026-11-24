@@ -1,4 +1,4 @@
-const CACHE = "lazy-camera-v4";
+const CACHE = "lazy-camera-v5";
 const PRECACHE = [
   "./",
   "./index.html",
