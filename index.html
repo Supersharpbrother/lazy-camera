@@ -838,6 +838,28 @@
     .tabs.tabs-3 { grid-template-columns: 1fr 1fr 1.35fr; }
     .tabs.tabs-3 .tab { padding: 0 4px; letter-spacing: 0.05em; }
     .seg.seg-4 { grid-template-columns: repeat(4, 1fr); }
+    .seg.seg-6 { grid-template-columns: repeat(6, 1fr); }
+    .seg.seg-6 .seg-btn { padding-left: 0; padding-right: 0; letter-spacing: 0.02em; min-width: 0; }
+    .opt-search-wrap { margin-bottom: 8px; }
+    .opt-search {
+      width: 100%; height: 40px; box-sizing: border-box; padding: 0 12px;
+      font: inherit; font-size: 16px; color: var(--fg-bright);
+      background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-sm);
+      outline: none; -webkit-appearance: none; appearance: none;
+    }
+    .opt-search::placeholder { color: var(--fg-dim); opacity: 1; }
+    .opt-search:focus { border-color: var(--fg); box-shadow: 0 0 0 1px var(--fg); }
+    .lens-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+    .lens-tag { font-size: 0.56rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg); border: 1px solid var(--line); border-radius: 3px; padding: 1px 5px 0; }
+    .lens-src { margin: 4px 0 8px; font-size: 0.62rem; line-height: 1.4; color: var(--fg-dim); }
+    .lens-src a { color: var(--fg); word-break: break-word; }
+    .lens-table.zoom .lt-row { grid-template-columns: 1.6fr 0.9fr 0.8fr 0.7fr 0.6fr; }
+    .cov-zoom input[type="range"] { width: 100%; }
+    .cov-zoom-val { float: right; color: var(--fg-bright); font-variant-numeric: tabular-nums; text-transform: none; }
+    .cov-canvas-wrap { width: 100%; background: #000; border-radius: var(--radius-sm); overflow: hidden; }
+    .cov-canvas { display: block; width: 100%; }
+    .cov-cap { margin: 5px 0 8px; font-size: 0.62rem; color: var(--fg-dim); letter-spacing: 0.03em; font-variant-numeric: slashed-zero tabular-nums; }
+    .cov-schema-lbl { display: block; margin-top: 2px; }
     .opt-view { margin-bottom: 10px; }
     .opt-sec { margin-bottom: 8px; }
     .opt-sec-note { margin: 0 2px 10px; font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg-dim); }
@@ -998,6 +1020,10 @@
         <span class="lbl">Обозначения</span>
         <ul class="legend">
           <li><b>до N</b> — максимум fps по данным производителя; серым — не тянет нужную частоту.</li>
+          <li><b>Ориентир</b> — производитель не публикует ни пятно, ни формат; берём диагональ типового кадра этого класса (S35 31,14 · FF 43,27 · LF 44,71 · 65 59,86 · анаморф 4-perf 28,8 · S16 14,45 мм). Это не данные производителя — вердикт «вероятно».</li>
+          <li><b>Зумы</b> — в колонке F диапазон; в «Покрытии» фокусное выбирается ползунком внутри диапазона.</li>
+          <li>Метки: <b>винтаж</b> — снятая с производства оптика; <b>только аренда</b> — линейка доступна только в прокате (ARRI Rental, Panavision); <b>вторичный источник</b> — данные не с сайта производителя (прокатные дома, архивы каталогов).</li>
+          <li><b>Покрытие</b> — расчётная модель, а не замер: спад cos⁴ по фокусному и мягкая граница на диаметре пятна; сплошная линия — заявленное пятно, пунктир — формат или ориентир.</li>
           <li><b>н/д</b> — производитель не публикует значение.</li>
           <li><b>*</b> у мм — посчитано из пикселей и шага пикселя производителя.</li>
           <li><b>ANA</b> — производитель обозначает режим как анаморфотный; <b>DSQ</b> — де-сквиз в камере для выбранного коэффициента.</li>
@@ -1014,11 +1040,16 @@
         <button type="button" class="seg-btn" data-view="cov" role="radio">Покрытие</button>
       </div>
       <div id="optRef">
-        <div class="seg seg-4 opt-sec" id="optSec" role="radiogroup" aria-label="Формат">
+        <div class="seg seg-6 opt-sec" id="optSec" role="radiogroup" aria-label="Формат">
           <button type="button" class="seg-btn" data-sec="s16" role="radio">S16</button>
           <button type="button" class="seg-btn" data-sec="s35" role="radio">S35</button>
           <button type="button" class="seg-btn" data-sec="ff" role="radio">FF</button>
+          <button type="button" class="seg-btn" data-sec="l65" role="radio">65</button>
           <button type="button" class="seg-btn" data-sec="ana" role="radio">ANAM</button>
+          <button type="button" class="seg-btn" data-sec="zoom" role="radio">ZOOM</button>
+        </div>
+        <div class="opt-search-wrap">
+          <input type="search" id="optSearch" class="opt-search" placeholder="Поиск: бренд, линейка…" aria-label="Поиск по линейкам" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search">
         </div>
         <div class="opt-sec-note" id="optSecNote"></div>
         <div id="optSeries"></div>
@@ -1045,6 +1076,10 @@
             </svg>
           </div>
         </div>
+        <div class="field cov-zoom" id="covZoomField" hidden>
+          <label class="sub-label" for="covZoom" style="margin-top:0">Фокусное в зуме <output id="covZoomVal" class="cov-zoom-val"></output></label>
+          <input type="range" id="covZoom" min="10" max="100" step="1" value="35">
+        </div>
         <div class="field">
           <label class="sub-label" for="covCam" style="margin-top:0">Камера</label>
           <div class="select-wrap">
@@ -1067,6 +1102,9 @@
         </div>
         </section>
         <section class="card cov-card" aria-live="polite">
+          <div class="cov-canvas-wrap"><canvas id="covCanvas" class="cov-canvas" role="img" aria-label="Расчётная освещённость кадра: пятно объектива на сенсоре"></canvas></div>
+          <div class="cov-cap" id="covCanvasCap"></div>
+          <span class="lbl cov-schema-lbl">Схема</span>
           <svg class="cov-svg" id="covSvg" viewBox="0 0 320 230" role="img" aria-label="Пятно объектива и кадр сенсора"></svg>
           <div class="cov-verdict" id="covVerdict"></div>
           <div class="cov-metrics" id="covMetrics"></div>
@@ -2027,7 +2065,7 @@
 
       const registerAndUpdate = () => {
         navigator.serviceWorker
-          .register("./sw.js?v=2", { updateViaCache: "none" })
+          .register("./sw.js?v=3", { updateViaCache: "none" })
           .then((reg) => { reg.update().catch(() => {}); })
           .catch(() => {});
       };
@@ -2042,9 +2080,9 @@
       });
     }
   </script>
-  <script src="cameras.js?v=2"></script>
-  <script src="cam.js?v=2"></script>
-  <script src="lenses.js?v=1"></script>
-  <script src="optics.js?v=1"></script>
+  <script src="cameras.js?v=3"></script>
+  <script src="cam.js?v=3"></script>
+  <script src="lenses.js?v=2"></script>
+  <script src="optics.js?v=2"></script>
 </body>
 </html>
