@@ -164,28 +164,42 @@
     const m = cx.modes[state.mode];
     const [w, h] = m.mm;
     const diag = Math.hypot(w, h);
-    const ratio = diag / ic;
-    const declared = s.icType === "circle";
+    const A = window.LC_COVER.assess(s, lens, f, w, h);
+    const ev = (x) => (x == null ? "н/д" : x <= -11.5 ? "темно (≤ −11 EV)" : "≈ " + num(x, 1).replace("-", "−") + " EV");
 
     // вердикт
-    let cls, title, text;
-    if (!declared) {
-      const what = s.icType === "nominal" ? "ориентира по формату (производитель пятно не публикует)" : "формата, который заявляет производитель";
-      if (ratio <= 1.0005) { cls = "ok"; title = s.icType === "nominal" ? "Вероятно покрывает" : "Покрывает"; text = "Кадр в пределах " + what + "."; }
-      else { cls = "edge"; title = "Вне заявленного"; text = "Кадр больше " + what + " на " + num((ratio - 1) * 100, 0) + "% по диагонали. Диаметр круга не опубликован — нужен тест."; }
-    } else if (ratio <= 0.98) { cls = "ok"; title = "Покрывает"; text = "Запас по диагонали " + num((1 / ratio - 1) * 100, 0) + "%."; }
-    else if (ratio <= 1.03) { cls = "edge"; title = "Погранично"; text = "Углы кадра на краю пятна: возможны падение резкости и затемнение в углах. Проверьте тестом."; }
-    else { cls = "no"; title = "Виньетирует"; text = "Диагональ кадра больше пятна на " + num((ratio - 1) * 100, 0) + "%: тёмные углы."; }
+    let title, text;
+    const cls = A.cls;
+    if (A.basis === "flt") {
+      const sm = A.sample;
+      title = cls === "ok" ? "Покрывает" : cls === "edge" ? "Погранично" : "Виньетирует";
+      if (A.ev != null) {
+        text = "Замер ARRI FLT" + A.fNote + ", T" + num(sm.T) + ", бесконечность: свет в углу кадра " + ev(A.ev) + ".";
+        if (A.evMod != null && LCC.classify(A.evMod) !== cls) text += " На МДФ: " + ev(A.evMod) + (LCC.classify(A.evMod) === "ok" ? " — покрывает." : LCC.classify(A.evMod) === "no" ? " — виньетирует." : " — погранично.");
+      } else text = "Замер ARRI FLT" + A.fNote + ": уже на границе LF Open Gate темно, а кадр ещё больше.";
+    } else {
+      const what = s.icType === "circle" ? "заявленного пятна" : s.icType === "format" ? "заявленного формата" : "ориентира по формату";
+      if (A.kind === "in") { title = s.icType === "nominal" ? "Вероятно покрывает" : "Покрывает"; text = s.icType === "circle" ? "Запас по диагонали " + num((1 / A.ratio - 1) * 100, 0) + "%." : "Кадр в пределах " + what + "."; }
+      else if (A.kind === "border") { title = "Погранично"; text = "Углы кадра на краю заявленного пятна. Реальная зона света обычно шире — проверьте тестом."; }
+      else if (A.kind === "beyond") { title = "Вне " + what.replace("заявленного ", "заявленного\u00a0"); text = "Кадр больше " + what + " на " + num((A.ratio - 1) * 100, 0) + "% по диагонали. Замера нет — реальная зона света может быть шире: нужен тест."; }
+      else { title = "Скорее всего виньетирует"; text = "Кадр больше " + what + " на " + num((A.ratio - 1) * 100, 0) + "% по диагонали. Замера нет — нужен тест."; }
+      if (A.fltBeyond) text += " ARRI FLT: весь LF Open Gate освещён, но кадр больше LF Open Gate — дальше замера нет.";
+    }
     el.cVerdict.className = "cov-verdict " + cls;
     el.cVerdict.innerHTML = '<span class="cov-title">' + esc(title) + "</span><span>" + esc(text) + "</span>";
 
-    const corner = illum(diag / 2, ic / 2, f, softFor(s));
     // метрики
     const rows = [];
     rows.push(["Кадр", num(w, 2) + " × " + num(h, 2) + " мм" + (m.calc ? "*" : "")]);
     rows.push(["Диагональ кадра", num(diag, 2) + " мм"]);
-    rows.push([s.icType === "circle" ? "Пятно объектива" : s.icType === "format" ? "Заявленный формат" : "Ориентир (не данные производителя)", "Ø " + num(ic, 2) + " мм"]);
-    rows.push(["Свет в углу кадра (расчёт)", corner > 0.004 ? num(Math.log2(corner), 1).replace("-", "−") + " EV" : "темно"]);
+    rows.push([s.icType === "circle" ? "Пятно (производитель)" : s.icType === "format" ? "Заявленный формат" : "Ориентир (не данные производителя)", "Ø " + num(ic, 2) + " мм"]);
+    if (A.basis === "flt" || A.fltBeyond) {
+      const sm = A.sample;
+      const edge = (e) => (e == null ? "н/д" : e ? "Ø ≈ " + num(e, 1) + " мм" : "≥ Ø " + num(LCC.LF_OG_DIAG, 1) + " мм");
+      rows.push(["Зона света, замер ARRI (∞ / МДФ)", edge(sm.e[0]) + " / " + edge(sm.e[1])]);
+    }
+    if (A.basis === "flt" && A.ev != null) rows.push(["Свет в углу кадра (замер ARRI)", ev(A.ev)]);
+    else if (A.basis !== "flt") rows.push(["Свет в углу кадра (модель)", A.kind === "in" || A.kind === "border" ? ev(Math.log2(cos4(diag / 2, f))) : "н/д — вне данных"]);
     const sq = s.sq || 1;
     const hfov = 2 * Math.atan((w * sq) / (2 * f)) * 180 / Math.PI;
     const vfov = 2 * Math.atan(h / (2 * f)) * 180 / Math.PI;
@@ -195,67 +209,87 @@
     rows.push(["Ø передней части · вес", (lens[3] == null ? "н/д" : trim(lens[3]) + " мм") + " · " + trim(lens[4]) + " кг"]);
     el.cMetrics.innerHTML = rows.map((r) => '<div class="cov-row"><span>' + esc(r[0]) + "</span><b>" + esc(r[1]) + "</b></div>").join("");
     const notes = [s.icNote];
-    notes.push("Картинка — расчётная модель, не замер: равномерное поле с естественным спадом cos⁴ по фокусному и мягкой границей на диаметре пятна. Реальная граница зависит от диафрагмы, дистанции фокусировки и экземпляра объектива.");
+    if (A.basis === "flt") notes.push("Картинка построена по замеру ARRI Lens Illumination Guide (ALEXA LF, открытая диафрагма, бесконечность): числа освещённости выведены нами из изображений ARRI (≈, гамма 2,2), картинки ARRI не загружаются. Критерий: > −3 EV в углу — покрывает, −3…−5 — погранично, < −5 — виньетирует (сверено с ALEXA LF FAQ ARRI).");
+    else notes.push("Картинка — модель, не замер: внутри заявленного пятна — естественный спад cos⁴; за его пределами (штриховка) данных нет — заявленный диаметр означает гарантированное покрытие, реальная зона света обычно шире.");
     if (s.sq) notes.push("Анаморфот сжимает картинку по горизонтали, но пятно на сенсоре — круг: покрытие считаем по физическому кадру.");
-    if (isZoom) notes.push("У зумов производитель публикует одно пятно на весь диапазон; на краях диапазона реальное покрытие может отличаться.");
+    if (isZoom && A.basis !== "flt") notes.push("У зумов производитель публикует одно пятно на весь диапазон; на краях диапазона реальное покрытие может отличаться.");
     if (m.calc) notes.push("* мм кадра посчитаны из пикселей и шага пикселя производителя камеры.");
     el.cNote.innerHTML = notes.map((n) => "<li>" + esc(n) + "</li>").join("");
 
-    drawCanvas(w, h, ic, f, s, cls);
-    drawSvg(w, h, ic, s.icType, cls);
+    const view = { w, h, f, s, A, ic };
+    lastView = view;
+    drawCanvas(view);
+    const icDraw = A.basis === "flt" ? (A.sample.e[0] || LCC.LF_OG_DIAG) : ic;
+    drawSvg(w, h, icDraw, A.basis === "flt" ? (A.sample.e[0] ? "circle" : "format") : s.icType, cls);
   }
 
-  // ── расчётная картинка освещённости ──
-  const softFor = (s) => (s.icType === "circle" ? 0.035 : 0.07);
-  function smooth(a, b, x) { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); }
-  function illum(r, R, f, soft) {
-    const c = f / Math.hypot(f, r);
-    const nat = c * c * c * c;
-    const edge = 1 - smooth(R * (1 - soft), R * (1 + soft), r);
-    return nat * edge;
-  }
-  function drawCanvas(w, h, ic, f, s, cls) {
+  // ── картинка освещённости ──
+  const LCC = window.LC_COVER;
+  let lastView = null;
+  function cos4(r, f) { const c = f / Math.hypot(f, r); return c * c * c * c; }
+  function drawCanvas(v) {
+    const { w, h, f, A, ic, s } = v;
     const cv = el.cCanvas;
-    const cssW = cv.parentElement.clientWidth || 320;
+    const cssW = Math.round(cv.parentElement.getBoundingClientRect().width) || 320;
     const aspect = Math.min(3, Math.max(0.6, w / h));
     const cssH = Math.round(cssW / aspect);
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const W = Math.round(cssW * dpr), H = Math.round(cssH * dpr);
     cv.width = W; cv.height = H; cv.style.height = cssH + "px";
     const ctx = cv.getContext("2d");
+    ctx.clearRect(0, 0, W, H);
     const img = ctx.createImageData(W, H);
-    const k = w / W; // мм на пиксель
-    const R = ic / 2, soft = softFor(s);
+    const kx = w / W, ky = h / H;
+    const R = ic / 2;
+    const flt = A.basis === "flt" ? A.sample : null;
+    const rMax = Math.hypot(w, h) / 2, step = rMax / 1023;
+    const lut = new Float32Array(1024); // модель без замера: освещённость по радиусу
+    for (let i = 0; i < 1024; i++) { const r = i * step; lut[i] = cos4(r, f) * (r <= R ? 1 : 0.42); }
     const d = img.data;
     for (let y = 0; y < H; y++) {
-      const my = (y + 0.5 - H / 2) * (h / H);
+      const my = (y + 0.5 - H / 2) * ky;
       for (let x = 0; x < W; x++) {
-        const mx = (x + 0.5 - W / 2) * k;
-        const e = illum(Math.hypot(mx, my), R, f, soft);
-        const v = Math.pow(e, 1 / 2.2) * 212;
+        const mx = (x + 0.5 - W / 2) * kx;
+        const val = flt ? Math.min(1, LCC.codeXY(flt.g, mx, my)) * 212 + ((x * 7 + y * 13) % 5 - 2) * 0.6 : Math.pow(lut[Math.min(1023, Math.round(Math.hypot(mx, my) / step))], 1 / 2.2) * 212;
         const i = (y * W + x) * 4;
-        d[i] = v; d[i + 1] = v * 0.97; d[i + 2] = v * 0.92; d[i + 3] = 255;
+        d[i] = val; d[i + 1] = val * 0.97; d[i + 2] = val * 0.92; d[i + 3] = 255;
       }
     }
     ctx.putImageData(img, 0, 0);
     const css = getComputedStyle(document.documentElement);
-    const fg = (css.getPropertyValue("--fg") || "#ffb000").trim();
+    const fg = (css.getPropertyValue("--fg") || "#ffb000").trim() || "#ffb000";
     const sc = W / w;
     ctx.save();
+    if (!flt && R < rMax) {
+      // штриховка: за заявленным пятном данных нет
+      ctx.save();
+      ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.arc(W / 2, H / 2, R * sc, 0, Math.PI * 2, true); ctx.clip("evenodd");
+      ctx.strokeStyle = "rgba(0,0,0,0.35)"; ctx.lineWidth = 2 * dpr;
+      ctx.beginPath();
+      for (let t = -H; t < W + H; t += 9 * dpr) { ctx.moveTo(t, 0); ctx.lineTo(t + H, H); }
+      ctx.stroke();
+      ctx.restore();
+    }
     ctx.lineWidth = 1.4 * dpr;
     ctx.strokeStyle = fg;
-    ctx.setLineDash(s.icType === "circle" ? [] : [6 * dpr, 5 * dpr]);
-    ctx.beginPath(); ctx.arc(W / 2, H / 2, R * sc, 0, Math.PI * 2); ctx.stroke();
-    ctx.setLineDash([]);
+    if (!flt) {
+      ctx.setLineDash(s.icType === "circle" ? [] : [6 * dpr, 5 * dpr]);
+      ctx.beginPath(); ctx.arc(W / 2, H / 2, R * sc, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+    }
     ctx.lineWidth = 2 * dpr;
     ctx.strokeRect(dpr, dpr, W - 2 * dpr, H - 2 * dpr);
     ctx.lineWidth = 1 * dpr;
     ctx.beginPath(); ctx.moveTo(W / 2 - 7 * dpr, H / 2); ctx.lineTo(W / 2 + 7 * dpr, H / 2); ctx.moveTo(W / 2, H / 2 - 7 * dpr); ctx.lineTo(W / 2, H / 2 + 7 * dpr); ctx.stroke();
     ctx.font = (10 * dpr) + "px 'IBM Plex Mono', monospace";
-    const tw = ctx.measureText("РАСЧЁТ").width; ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(4 * dpr, 4 * dpr, tw + 10 * dpr, 15 * dpr);
-    ctx.fillStyle = fg; ctx.fillText("РАСЧЁТ", 9 * dpr, 15 * dpr);
+    const label = flt ? "РАСЧЁТ ПО ЗАМЕРУ ARRI" : "РАСЧЁТ";
+    const tw = ctx.measureText(label).width; ctx.fillStyle = "rgba(0,0,0,0.65)"; ctx.fillRect(4 * dpr, 4 * dpr, tw + 10 * dpr, 15 * dpr);
+    ctx.fillStyle = "#ffb000"; ctx.fillText(label, 9 * dpr, 15 * dpr);
     ctx.restore();
-    el.cCanvasCap.textContent = "Кадр " + num(w, 1) + " × " + num(h, 1) + " мм · пятно Ø " + num(ic, 1) + " мм · F " + trim(f) + " мм · модель, не замер";
+    cv.dataset.sig = [s.id, f, w, h].join("|");
+    el.cCanvasCap.textContent = "Кадр " + num(w, 1) + " × " + num(h, 1) + " мм · F " + trim(f) + " мм · " +
+      (flt ? "зона света по замеру ARRI FLT" + (flt.e[0] ? " Ø ≈ " + num(flt.e[0], 1) + " мм" : " ≥ LF Open Gate") + (flt.f !== f ? " (замер на " + flt.f + " мм)" : "")
+           : (s.icType === "circle" ? "пятно" : s.icType === "format" ? "формат" : "ориентир") + " Ø " + num(ic, 1) + " мм · модель, не замер");
   }
 
   function drawSvg(w, h, ic, icType, cls) {
@@ -310,7 +344,7 @@
   el.cCam.addEventListener("change", () => { state.cam = el.cCam.value; state.mode = 0; render(); });
   el.cMode.addEventListener("change", () => { state.mode = Number(el.cMode.value); render(); });
   let rt;
-  window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (state.view === "cov" && !el.cov.hidden) renderCov(); }, 150); });
+  window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (state.view === "cov" && !el.cov.hidden && lastView) drawCanvas(lastView); }, 150); });
   const tb = $("tabBtnOpt");
   if (tb) tb.addEventListener("click", () => setTimeout(() => { if (state.view === "cov") renderCov(); }, 0));
 
