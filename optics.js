@@ -112,7 +112,7 @@
   function fillCovSelectors() {
     el.cSeries.innerHTML = SECTIONS.map((sec) =>
       '<optgroup label="' + esc(sec.title) + '">' +
-      SERIES.filter((s) => s.sec === sec.id).map((s) => '<option value="' + s.id + '">' + esc(s.brand + " " + s.name) + "</option>").join("") +
+      SERIES.filter((s) => s.sec === sec.id).map((s) => '<option value="' + s.id + '">' + esc(s.brand.split(/[\s/]+/).some((w) => w.length > 2 && s.name.startsWith(w)) ? s.name : s.brand + " " + s.name) + "</option>").join("") +
       "</optgroup>").join("");
     const brands = [];
     CAMS.forEach((x) => { if (!brands.includes(x.c.brand)) brands.push(x.c.brand); });
